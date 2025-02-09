@@ -1,0 +1,26 @@
+{
+  "name": "@uniwebcms/semantic-parser",
+  "version": "0.1.0",
+  "description": "Semantic parser for ProseMirror/TipTap content structures",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "test-report": "jest --json > test-results.json 2>&1"
+  },
+  "keywords": [
+    "prosemirror",
+    "tiptap",
+    "parser",
+    "semantic",
+    "content"
+  ],
+  "author": "UniWebCMS",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uniwebcms/semantic-parser.git"
+  }
+}
