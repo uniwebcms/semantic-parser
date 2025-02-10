@@ -1,5 +1,3 @@
-const { getRoleFromNode } = require("../utils/role");
-
 /**
  * Organize content elements by their type while preserving context
  * @param {Array} sequence Flat sequence of elements

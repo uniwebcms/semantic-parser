@@ -14,8 +14,9 @@
     "semantic",
     "content"
   ],
-  "author": "UniWebCMS",
+  "author": "Proximify Inc",
   "license": "Apache-2.0",
+  "dependencies": {},
   "devDependencies": {
     "jest": "^29.7.0"
   },
