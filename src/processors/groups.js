@@ -116,16 +116,13 @@ function splitByHeadings(sequence) {
 
 /**
  * Check if this is a pretitle (H3 followed by H1/H2)
- * @param {*} sequence
- * @param {*} i
- * @returns
  */
 function isPreTitle(sequence, i) {
   return (
     i + 1 < sequence.length &&
     sequence[i].type === "heading" &&
-    sequence[i + 1].type === "heading" &&
     sequence[i].level === 3 &&
+    sequence[i + 1].type === "heading" &&
     sequence[i + 1].level <= 2
   );
 }
