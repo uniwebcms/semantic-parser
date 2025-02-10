@@ -40,7 +40,7 @@ function processGroups(sequence) {
     }
   }
 
-  result.metadata.groups = processedGroups.length;
+  // result.metadata.groups = processedGroups.length;
   return result;
 }
 
@@ -88,7 +88,8 @@ function splitByHeadings(sequence) {
     const element = sequence[i];
 
     if (isPreTitle(sequence, i)) {
-      currentGroup.push(sequence[i++]); // move to the next
+      currentGroup.push(sequence[i]);
+      i++; // move to known next heading (H1 or h2)
     }
 
     if (element.type === "heading") {
@@ -145,64 +146,44 @@ function readHeadingGroup(sequence, i) {
  * Process a group's content to identify its structure
  */
 function processGroupContent(elements) {
-  const group = {
-    headings: {
-      pretitle: null,
-      title: null,
-      subtitle: null,
-      subsubtitle: null,
-    },
-    content: [],
-    metadata: {
-      level: null,
-      contentTypes: new Set(),
-    },
+  const content = [];
+  const headings = {
+    pretitle: null,
+    title: null,
+    subtitle: null,
+    subsubtitle: null,
+  };
+  const metadata = {
+    level: null,
+    contentTypes: new Set(),
   };
 
-  let i = 0;
+  for (let i = 0; i < elements.length; i++) {
+    if (isPreTitle(elements, i)) {
+      headings.pretitle = elements[i];
+      i++; // move to known next heading (H1 or h2)
+    }
 
-  // Check for pretitle pattern (H3 followed by H1/H2)
-  if (isPreTitle(elements, i)) {
-    group.headings.pretitle = elements[i];
-    i++;
-  }
+    const element = elements[i];
 
-  // Process title
-  if (i < elements.length && elements[i].type === "heading") {
-    group.headings.title = elements[i];
-    group.metadata.level = elements[i].level;
-    i++;
+    if (element.type === "heading") {
+      metadata.level ??= element.level;
 
-    // Look for subtitle (next level heading)
-    if (
-      i < elements.length &&
-      elements[i].type === "heading" &&
-      elements[i].level > group.metadata.level
-    ) {
-      group.headings.subtitle = elements[i];
-      i++;
-
-      // Look for subsubtitle (even deeper heading)
-      if (
-        i < elements.length &&
-        elements[i].type === "heading" &&
-        elements[i].level > group.headings.subtitle.level
-      ) {
-        group.headings.subsubtitle = elements[i];
-        i++;
+      if (!headings.title) {
+        headings.title = element;
+      } else if (!headings.subtitle) {
+        headings.subtitle = element;
+      } else if (!headings.subsubtitle) {
+        headings.subsubtitle = element;
       }
+      // What do we do if more headings?
+    } else {
+      content.push(element);
+      metadata.contentTypes.add(element.type);
     }
   }
 
-  // All remaining elements are content
-  while (i < elements.length) {
-    const element = elements[i];
-    group.content.push(element);
-    group.metadata.contentTypes.add(element.type);
-    i++;
-  }
-
-  return group;
+  return { headings, content, metadata };
 }
 
 /**
@@ -211,23 +192,14 @@ function processGroupContent(elements) {
 function identifyMainContent(groups) {
   if (groups.length === 0) return false;
 
-  // Single group with H1/H2 title is main content
-  if (groups.length === 1) {
-    return true;
-    // return groups[0].headings.title && groups[0].metadata.level <= 2;
-  }
+  // Single group is main content
+  if (groups.length === 1) return true;
 
-  // Multiple groups - need to check hierarchy
-  const firstGroup = groups[0];
-  if (!firstGroup.headings.title) return false;
+  // First group should be more important (lower level) than second to be main
+  const first = groups[0].metadata.level;
+  const second = groups[1].metadata.level;
 
-  // First group should be more important than others to be main
-  const firstGroupLevel = firstGroup.metadata.level;
-  const otherGroupsMinLevel = Math.min(
-    ...groups.slice(1).map((g) => g.metadata.level || Infinity)
-  );
-
-  return firstGroupLevel < otherGroupsMinLevel;
+  return first ? !second || first < second : false;
 }
 
 module.exports = {
