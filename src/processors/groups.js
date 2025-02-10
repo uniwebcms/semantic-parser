@@ -82,26 +82,43 @@ function splitByDividers(sequence) {
 function splitByHeadings(sequence) {
   const groups = [];
   let currentGroup = [];
-  let titleLevel = null;
+  let isPreOpened = false;
+
+  // Consider if current group is pre opened (only has banner or pretitle)
+  // before starting a new group.
+  const startGroup = (preOpen) => {
+    if (currentGroup.length && !isPreOpened) {
+      groups.push(currentGroup);
+      currentGroup = [];
+    }
+    isPreOpened = preOpen;
+  };
 
   for (let i = 0; i < sequence.length; i++) {
-    const element = sequence[i];
-
-    if (isPreTitle(sequence, i)) {
+    // Only allow a banner for the first group
+    if (!groups.length && isBannerImage(sequence, i)) {
+      startGroup(true); // pre open a new group
       currentGroup.push(sequence[i]);
-      i++; // move to known next heading (H1 or h2)
+      i++; // move to known next element (it will be a heading)
     }
+
+    // Handle special pretitle case before consuming all consecutive
+    // headings with increasing levels
+    if (isPreTitle(sequence, i)) {
+      startGroup(true); // pre open a new group
+      currentGroup.push(sequence[i]);
+      i++; // move to known next element (it will be a heading)
+    }
+
+    const element = sequence[i];
 
     if (element.type === "heading") {
       const headings = readHeadingGroup(sequence, i);
-      if (titleLevel === null) {
-        titleLevel = headings[0].level;
-      } else {
-        groups.push(currentGroup);
-        currentGroup = [];
-      }
+      startGroup(false);
+
+      // Add headings to the current group
       currentGroup.push(...headings);
-      i += headings.length - 1; // skip ahead
+      i += headings.length - 1; // skip all the added headings
     } else {
       currentGroup.push(element);
     }
@@ -115,18 +132,37 @@ function splitByHeadings(sequence) {
 }
 
 /**
- * Check if this is a pretitle (H3 followed by H1/H2)
+ * Check if this is a pretitle (eg, H3 followed by H1/H2)
  */
 function isPreTitle(sequence, i) {
   return (
     i + 1 < sequence.length &&
     sequence[i].type === "heading" &&
-    sequence[i].level === 3 &&
     sequence[i + 1].type === "heading" &&
-    sequence[i + 1].level <= 2
+    sequence[i].level > sequence[i + 1].level
+  );
+
+  // return (
+  //   i + 1 < sequence.length &&
+  //   sequence[i].type === "heading" &&
+  //   sequence[i].level === 3 &&
+  //   sequence[i + 1].type === "heading" &&
+  //   sequence[i + 1].level <= 2
+  // );
+}
+
+function isBannerImage(sequence, i) {
+  return (
+    i + 1 < sequence.length &&
+    sequence[i].type === "image" &&
+    sequence[i + 1].type === "heading"
   );
 }
 
+/**
+ * Eagerly consume all consecutive headings with increasing levels
+ * and return them as an array.
+ */
 function readHeadingGroup(sequence, i) {
   const elements = [sequence[i]];
   for (i++; i < sequence.length; i++) {
