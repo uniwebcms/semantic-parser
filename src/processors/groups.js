@@ -4,7 +4,6 @@
  * @returns {Object} Content organized into groups with identified main content
  */
 function processGroups(sequence) {
-  // Initialize result structure
   const result = {
     main: null,
     items: [],
@@ -16,25 +15,22 @@ function processGroups(sequence) {
 
   if (!sequence.length) return result;
 
-  // Check grouping mode - divider mode takes precedence if any divider exists
+  // Check if using divider mode
   result.metadata.dividerMode = sequence.some((el) => el.type === "divider");
 
-  // Split into raw groups based on mode
+  // Split sequence into raw groups
   const groups = result.metadata.dividerMode
     ? splitByDividers(sequence)
     : splitByHeadings(sequence);
 
-  // Early return if no groups formed
-  if (!groups.length) return result;
-
-  // Process each group to identify its structure
+  // Process each group's structure
   const processedGroups = groups.map(processGroupContent);
 
   // Special handling for first group in divider mode
   if (result.metadata.dividerMode && groups.startsWithDivider) {
     result.items = processedGroups;
   } else {
-    // Check if first group should be main content
+    // Organize into main content and items
     const shouldBeMain = identifyMainContent(processedGroups);
     if (shouldBeMain) {
       result.main = processedGroups[0];
@@ -50,29 +46,24 @@ function processGroups(sequence) {
 
 /**
  * Split sequence into groups using dividers
- * @param {Array} sequence
- * @returns {Array} Groups with startsWithDivider metadata
  */
 function splitByDividers(sequence) {
   const groups = [];
   let currentGroup = [];
   let startsWithDivider = false;
 
-  // Handle empty elements at start to determine if truly starts with divider
-  let contentStarted = false;
-
+  // Check if content effectively starts with divider (ignoring whitespace etc)
   for (let i = 0; i < sequence.length; i++) {
     const element = sequence[i];
 
     if (element.type === "divider") {
-      if (!contentStarted) {
+      if (currentGroup.length === 0 && groups.length === 0) {
         startsWithDivider = true;
       } else if (currentGroup.length > 0) {
         groups.push(currentGroup);
         currentGroup = [];
       }
     } else {
-      contentStarted = true;
       currentGroup.push(element);
     }
   }
@@ -86,51 +77,31 @@ function splitByDividers(sequence) {
 }
 
 /**
- * Split sequence into groups using heading hierarchy
- * @param {Array} sequence
- * @returns {Array} Groups
+ * Split sequence into groups using heading patterns
  */
 function splitByHeadings(sequence) {
   const groups = [];
   let currentGroup = [];
-  let baseLevel = null;
-  let isProcessingHeaders = true;
+  let titleLevel = null;
 
   for (let i = 0; i < sequence.length; i++) {
     const element = sequence[i];
 
+    if (isPreTitle(sequence, i)) {
+      currentGroup.push(sequence[i++]); // move to the next
+    }
+
     if (element.type === "heading") {
-      if (baseLevel === null) {
-        // Skip initial H3 if it's followed by lower level heading
-        if (element.level === 3 && hasLowerLevelHeading(sequence, i)) {
-          currentGroup.push(element);
-          continue;
-        }
-        baseLevel = element.level;
-        currentGroup.push(element);
-        continue;
+      const headings = readHeadingGroup(sequence, i);
+      if (titleLevel === null) {
+        titleLevel = headings[0].level;
+      } else {
+        groups.push(currentGroup);
+        currentGroup = [];
       }
-
-      // If still in header section, continue if level is higher (lower importance)
-      if (isProcessingHeaders && element.level > baseLevel) {
-        currentGroup.push(element);
-        continue;
-      }
-
-      // Start new group if heading is same or higher importance
-      if (element.level <= baseLevel) {
-        if (currentGroup.length > 0) {
-          groups.push(currentGroup);
-          currentGroup = [];
-        }
-        baseLevel = element.level;
-        isProcessingHeaders = true;
-      }
-
-      currentGroup.push(element);
+      currentGroup.push(...headings);
+      i += headings.length - 1; // skip ahead
     } else {
-      // Non-heading content ends header processing
-      isProcessingHeaders = false;
       currentGroup.push(element);
     }
   }
@@ -143,28 +114,35 @@ function splitByHeadings(sequence) {
 }
 
 /**
- * Check if there's a lower level heading after current position
- * @param {Array} sequence
- * @param {number} position
- * @returns {boolean}
+ * Check if this is a pretitle (H3 followed by H1/H2)
+ * @param {*} sequence
+ * @param {*} i
+ * @returns
  */
-function hasLowerLevelHeading(sequence, position) {
-  const currentLevel = sequence[position].level;
+function isPreTitle(sequence, i) {
+  return (
+    i + 1 < sequence.length &&
+    sequence[i].type === "heading" &&
+    sequence[i + 1].type === "heading" &&
+    sequence[i].level === 3 &&
+    sequence[i + 1].level <= 2
+  );
+}
 
-  for (let i = position + 1; i < sequence.length; i++) {
+function readHeadingGroup(sequence, i) {
+  const elements = [sequence[i]];
+  for (i++; i < sequence.length; i++) {
     const element = sequence[i];
-    if (element.type === "heading") {
-      return element.level < currentLevel;
+
+    if (element.type === "heading" && element.level > sequence[i - 1].level) {
+      elements.push(element);
     }
-    if (element.type !== "heading") break;
   }
-  return false;
+  return elements;
 }
 
 /**
  * Process a group's content to identify its structure
- * @param {Array} elements
- * @returns {Object} Structured group
  */
 function processGroupContent(elements) {
   const group = {
@@ -181,43 +159,42 @@ function processGroupContent(elements) {
     },
   };
 
-  // Find initial heading sequence
-  let headings = [];
   let i = 0;
 
-  while (i < elements.length && elements[i].type === "heading") {
-    headings.push(elements[i]);
+  // Check for pretitle pattern (H3 followed by H1/H2)
+  if (isPreTitle(elements, i)) {
+    group.headings.pretitle = elements[i];
     i++;
   }
 
-  // Process heading structure
-  if (headings.length > 0) {
-    // Check for pretitle pattern
+  // Process title
+  if (i < elements.length && elements[i].type === "heading") {
+    group.headings.title = elements[i];
+    group.metadata.level = elements[i].level;
+    i++;
+
+    // Look for subtitle (next level heading)
     if (
-      headings[0].level === 3 &&
-      headings.length > 1 &&
-      headings[1].level < 3
+      i < elements.length &&
+      elements[i].type === "heading" &&
+      elements[i].level > group.metadata.level
     ) {
-      group.headings.pretitle = headings[0];
-      headings.shift();
-    }
+      group.headings.subtitle = elements[i];
+      i++;
 
-    // Process remaining headings
-    if (headings.length > 0) {
-      group.headings.title = headings[0];
-      group.metadata.level = headings[0].level;
-
-      if (headings.length > 1) {
-        group.headings.subtitle = headings[1];
-
-        if (headings.length > 2) {
-          group.headings.subsubtitle = headings[2];
-        }
+      // Look for subsubtitle (even deeper heading)
+      if (
+        i < elements.length &&
+        elements[i].type === "heading" &&
+        elements[i].level > group.headings.subtitle.level
+      ) {
+        group.headings.subsubtitle = elements[i];
+        i++;
       }
     }
   }
 
-  // Add remaining elements as content
+  // All remaining elements are content
   while (i < elements.length) {
     const element = elements[i];
     group.content.push(element);
@@ -230,31 +207,26 @@ function processGroupContent(elements) {
 
 /**
  * Determine if the first group should be treated as main content
- * @param {Array} groups Processed groups
- * @returns {boolean}
  */
 function identifyMainContent(groups) {
-  if (groups.length < 1) return false;
+  if (groups.length === 0) return false;
 
+  // Single group with H1/H2 title is main content
+  if (groups.length === 1) {
+    return true;
+    // return groups[0].headings.title && groups[0].metadata.level <= 2;
+  }
+
+  // Multiple groups - need to check hierarchy
   const firstGroup = groups[0];
   if (!firstGroup.headings.title) return false;
 
-  // Get the minimum heading level (highest importance) from each group
-  const getMinLevel = (group) => {
-    const headings = [
-      group.headings.title,
-      ...group.content.filter((el) => el.type === "heading"),
-    ].filter(Boolean);
+  // First group should be more important than others to be main
+  const firstGroupLevel = firstGroup.metadata.level;
+  const otherGroupsMinLevel = Math.min(
+    ...groups.slice(1).map((g) => g.metadata.level || Infinity)
+  );
 
-    return headings.length > 0
-      ? Math.min(...headings.map((h) => h.level))
-      : Infinity;
-  };
-
-  const firstGroupLevel = getMinLevel(firstGroup);
-  const otherGroupsMinLevel = Math.min(...groups.slice(1).map(getMinLevel));
-
-  // First group should be main content if it has more important headings
   return firstGroupLevel < otherGroupsMinLevel;
 }
 
