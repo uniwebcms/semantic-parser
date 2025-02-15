@@ -15,7 +15,7 @@
     "content"
   ],
   "author": "Proximify Inc",
-  "license": "Apache-2.0",
+  "license": "GPL-3.0-or-later",
   "devDependencies": {
     "jest": "^29.7.0"
   },
