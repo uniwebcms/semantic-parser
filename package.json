@@ -14,7 +14,7 @@
     "semantic",
     "content"
   ],
-  "author": "Proximify Inc",
+  "author": "Proximify Inc.",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
     "jest": "^29.7.0"
