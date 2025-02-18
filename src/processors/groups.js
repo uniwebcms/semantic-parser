@@ -134,14 +134,6 @@ function splitByHeadings(sequence) {
  */
 function isPreTitle(sequence, i) {
     return i + 1 < sequence.length && sequence[i].type === 'heading' && sequence[i + 1].type === 'heading' && sequence[i].level > sequence[i + 1].level;
-
-    // return (
-    //   i + 1 < sequence.length &&
-    //   sequence[i].type === "heading" &&
-    //   sequence[i].level === 3 &&
-    //   sequence[i + 1].type === "heading" &&
-    //   sequence[i + 1].level <= 2
-    // );
 }
 
 function isBannerImage(sequence, i) {
@@ -185,7 +177,7 @@ function processGroupContent(elements) {
         properties: [],
         propertyBlocks: [],
         cards: [], // not supported yet
-        headings: [] // dont know what this is
+        headings: [] // used in lists
     };
 
     const metadata = {
@@ -219,8 +211,7 @@ function processGroupContent(elements) {
                 header.subtitle = element.content;
             }
         } else if (element.type === 'list') {
-            // content.push(element);
-            // metadata.contentTypes.add(element.type);
+            body.lists.push(processListContent(element));
         } else {
             switch (element.type) {
                 case 'paragraph':
@@ -265,6 +256,24 @@ function processGroupContent(elements) {
         banner,
         metadata
     };
+}
+
+function processListContent(list) {
+    const { items } = list;
+
+    return items.map((item) => {
+        const { items: nestedList, content: listContent } = item;
+
+        const parsedContent = processGroupContent(listContent).body;
+
+        if (nestedList.length) {
+            const parsedNestedList = nestedList.map((nestedItem) => processGroupContent(nestedItem.content).body);
+
+            parsedContent.lists = [parsedNestedList];
+        }
+
+        return parsedContent;
+    });
 }
 
 /**
