@@ -201,4 +201,6 @@ function processListItems(node) {
     return items;
 }
 
-export default processSequence;
+module.exports = {
+    processSequence
+};

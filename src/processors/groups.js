@@ -19,9 +19,7 @@ function processGroups(sequence) {
     result.metadata.dividerMode = sequence.some((el) => el.type === 'divider');
 
     // Split sequence into raw groups
-    const groups = result.metadata.dividerMode
-        ? splitByDividers(sequence)
-        : splitByHeadings(sequence);
+    const groups = result.metadata.dividerMode ? splitByDividers(sequence) : splitByHeadings(sequence);
 
     // Process each group's structure
     const processedGroups = groups.map(processGroupContent);
@@ -135,12 +133,7 @@ function splitByHeadings(sequence) {
  * Check if this is a pretitle (eg, H3 followed by H1/H2)
  */
 function isPreTitle(sequence, i) {
-    return (
-        i + 1 < sequence.length &&
-        sequence[i].type === 'heading' &&
-        sequence[i + 1].type === 'heading' &&
-        sequence[i].level > sequence[i + 1].level
-    );
+    return i + 1 < sequence.length && sequence[i].type === 'heading' && sequence[i + 1].type === 'heading' && sequence[i].level > sequence[i + 1].level;
 
     // return (
     //   i + 1 < sequence.length &&
@@ -152,11 +145,7 @@ function isPreTitle(sequence, i) {
 }
 
 function isBannerImage(sequence, i) {
-    return (
-        i + 1 < sequence.length &&
-        sequence[i].type === 'image' &&
-        (sequence[i].role === 'banner' || sequence[i + 1].type === 'heading')
-    );
+    return i + 1 < sequence.length && sequence[i].type === 'image' && (sequence[i].role === 'banner' || sequence[i + 1].type === 'heading');
 }
 
 /**
@@ -294,4 +283,6 @@ function identifyMainContent(groups) {
     return first ? !second || first < second : false;
 }
 
-export default processGroups;
+module.exports = {
+    processGroups
+};
