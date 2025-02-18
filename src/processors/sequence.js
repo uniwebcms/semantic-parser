@@ -7,7 +7,6 @@ function processSequence(doc) {
     const sequence = [];
     processNode(doc, sequence);
 
-    console.log('sequence', sequence);
     return sequence;
 }
 
@@ -27,7 +26,6 @@ function processNode(node, sequence) {
 }
 
 function createSequenceElement(node) {
-    console.log(node);
     function isLink() {
         if (node.type === 'paragraph' && node.content.length === 1) {
             return node.content[0].marks?.some((mark) => mark.type === 'link') || false;
@@ -118,7 +116,6 @@ function createSequenceElement(node) {
             };
 
         case 'image':
-            console.log('node', node);
             return {
                 type: 'image',
                 src: node.attrs.src,
