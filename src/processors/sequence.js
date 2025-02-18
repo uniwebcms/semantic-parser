@@ -4,137 +4,201 @@
  * @returns {Array} Sequence of content elements
  */
 function processSequence(doc) {
-  const sequence = [];
-  processNode(doc, sequence);
-  return sequence;
+    const sequence = [];
+    processNode(doc, sequence);
+
+    console.log('sequence', sequence);
+    return sequence;
 }
 
 function processNode(node, sequence) {
-  // Special handling for root doc node
-  if (node.type === "doc") {
-    node.content?.forEach((child) => processNode(child, sequence));
-    return;
-  }
-
-  // Create element based on node type
-  const element = createSequenceElement(node);
-
-  if (element) {
-    // Process marks from node or content
-    if (node.marks?.length || hasMarkedContent(node)) {
-      element.marks = collectMarks(node);
+    // Special handling for root doc node
+    if (node.type === 'doc') {
+        node.content?.forEach((child) => processNode(child, sequence));
+        return;
     }
 
-    sequence.push(element);
-  }
+    // Create element based on node type
+    const element = createSequenceElement(node);
 
-  // Process children if they exist and not already processed
-  if (node.content && !element?.items) {
-    node.content.forEach((child) => processNode(child, sequence));
-  }
+    if (element) {
+        sequence.push(element);
+    }
 }
 
 function createSequenceElement(node) {
-  switch (node.type) {
-    case "heading":
-      return {
-        type: "heading",
-        level: node.attrs.level,
-        content: getTextContent(node),
-      };
+    console.log(node);
+    function isLink() {
+        if (node.type === 'paragraph' && node.content.length === 1) {
+            return node.content[0].marks?.some((mark) => mark.type === 'link') || false;
+        }
+    }
 
-    case "paragraph":
-      return {
-        type: "paragraph",
-        content: getTextContent(node),
-      };
+    function isImage() {
+        if (node.type === 'paragraph' && node.content.length === 1) {
+            return node.content[0].type === 'image' && (node.content[0].attrs.role === 'image' || node.content[0].attrs.role === 'banner');
+        }
+    }
 
-    case "image":
-      return {
-        type: "image",
-        src: node.attrs.src,
-        alt: node.attrs.alt,
-        role: node.attrs.role || "content",
-      };
+    function isIcon() {
+        if (node.type === 'paragraph' && node.content.length === 1) {
+            return node.content[0].type === 'image' && node.content[0].attrs.role === 'icon';
+        }
+    }
 
-    case "bulletList":
-    case "orderedList":
-      return {
-        type: "list",
-        style: node.type === "bulletList" ? "bullet" : "ordered",
-        items: processListItems(node),
-      };
+    function isButton() {
+        if (node.type === 'paragraph' && node.content.length === 1) {
+            return node.content[0].type === 'text' && node.content[0].marks?.some((mark) => mark.type === 'button');
+        }
+    }
 
-    case "listItem":
-      return {
-        type: "listItem",
-        content: getTextContent(node),
-      };
+    function isVideo() {
+        if (node.type === 'paragraph' && node.content.length === 1) {
+            return node.content[0].type === 'image' && node.content[0].attrs.role === 'video';
+        }
+    }
 
-    case "horizontalRule":
-      return {
-        type: "divider",
-      };
+    // extract pure [type] content from the paragraph node for easier handling in the byGroup processor
+    if (isLink()) {
+        return {
+            type: 'link',
+            content: {
+                href: node.content[0].marks.find((mark) => mark.type === 'link').attrs.href,
+                label: node.content[0].text
+            }
+        };
+    }
 
-    case "text":
-      return null;
+    if (isImage()) {
+        return {
+            type: 'image',
+            src: node.content[0].attrs.src,
+            caption: node.content[0].attrs.title,
+            alt: node.content[0].attrs.alt || node.content[0].attrs.title,
+            role: node.content[0].attrs.role
+        };
+    }
 
-    default:
-      return {
-        type: node.type,
-        content: getTextContent(node),
-      };
-  }
+    if (isIcon()) {
+        return {
+            type: 'icon',
+            svg: node.content[0].attrs.src // path or svg content
+        };
+    }
+
+    if (isButton()) {
+        return {
+            type: 'button',
+            content: node.content[0].text,
+            attrs: node.content[0].marks.find((mark) => mark.type === 'button').attrs
+        };
+    }
+
+    if (isVideo()) {
+        return {
+            type: 'video',
+            src: node.content[0].attrs.src,
+            caption: node.content[0].attrs.title,
+            alt: node.content[0].attrs.alt || node.content[0].attrs.title
+        };
+    }
+
+    switch (node.type) {
+        case 'heading':
+            return {
+                type: 'heading',
+                level: node.attrs.level,
+                content: getTextContent(node)
+            };
+
+        case 'paragraph':
+            return {
+                type: 'paragraph',
+                content: getTextContent(node)
+            };
+
+        case 'image':
+            console.log('node', node);
+            return {
+                type: 'image',
+                src: node.attrs.src,
+                alt: node.attrs.alt,
+                role: node.attrs.role
+            };
+
+        case 'bulletList':
+        case 'orderedList':
+            return {
+                type: 'list',
+                style: node.type === 'bulletList' ? 'bullet' : 'ordered',
+                items: processListItems(node)
+            };
+
+        case 'listItem':
+            return {
+                type: 'listItem',
+                content: getTextContent(node)
+            };
+
+        case 'horizontalRule':
+            return {
+                type: 'divider'
+            };
+
+        case 'text':
+            return null;
+
+        default:
+            return {
+                type: node.type,
+                content: getTextContent(node)
+            };
+    }
 }
 
 function getTextContent(node) {
-  if (!node.content) return "";
-  return node.content.reduce((text, child) => {
-    if (child.type === "text") {
-      return text + child.text;
-    }
-    return text + getTextContent(child);
-  }, "");
-}
+    if (!node.content) return '';
 
-function hasMarkedContent(node) {
-  if (!node.content) return false;
-  return node.content.some(
-    (child) => child.marks?.length || hasMarkedContent(child)
-  );
-}
+    return node.content.reduce((prev, curr) => {
+        const { type, marks = [], text } = curr;
 
-function collectMarks(node) {
-  const marks = new Set();
+        if (type === 'text') {
+            let styledText = '';
+            if (marks.some((mark) => mark.type === 'link')) {
+                styledText = `<a href="${marks.find((mark) => mark.type === 'link').attrs.href}">${text}</a>`;
+            }
 
-  if (node.marks) {
-    node.marks.forEach((mark) => marks.add(mark.type));
-  }
+            if (marks.some((mark) => mark.type === 'bold')) {
+                styledText = `<strong>${text}</strong>`;
+            }
 
-  if (node.content) {
-    node.content.forEach((child) => {
-      collectMarks(child).forEach((mark) => marks.add(mark));
-    });
-  }
+            if (marks.some((mark) => mark.type === 'italic')) {
+                styledText = `<em>${text}</em>`;
+            }
 
-  return Array.from(marks);
+            if (!marks.length) {
+                styledText = text;
+            }
+
+            return prev + styledText;
+        } else {
+            console.warn(`unhandled text content type: ${type}`, curr);
+        }
+    }, '');
 }
 
 function processListItems(node) {
-  const items = [];
-  node.content?.forEach((item) => {
-    if (item.type === "listItem") {
-      items.push({
-        content: getTextContent(item),
-        items: item.content
-          ?.filter((child) => child.type.endsWith("List"))
-          .flatMap((list) => processListItems(list)),
-      });
-    }
-  });
-  return items;
+    const items = [];
+    node.content?.forEach((item) => {
+        if (item.type === 'listItem') {
+            items.push({
+                content: item.content?.map((child) => createSequenceElement(child)), // this content is a mix of images, text, links or other elements, so it is basically a collection of nodes
+                items: item.content?.filter((child) => child.type.endsWith('List')).flatMap((list) => processListItems(list))
+            });
+        }
+    });
+
+    return items;
 }
 
-module.exports = {
-  processSequence,
-};
+export default processSequence;
