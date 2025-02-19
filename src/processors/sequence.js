@@ -80,7 +80,7 @@ function createSequenceElement(node) {
     if (isIcon()) {
         return {
             type: 'icon',
-            svg: node.content[0].attrs.src // path or svg content
+            svg: node.content[0].attrs.svg
         };
     }
 
@@ -189,7 +189,7 @@ function processListItems(node) {
     node.content?.forEach((item) => {
         if (item.type === 'listItem') {
             items.push({
-                content: item.content?.map((child) => createSequenceElement(child)), // this content is a mix of images, text, links or other elements, so it is basically a collection of nodes
+                content: item.content?.filter((child) => !child.type.endsWith('List'))?.map((child) => createSequenceElement(child)),
                 items: item.content?.filter((child) => child.type.endsWith('List')).flatMap((list) => processListItems(list))
             });
         }
