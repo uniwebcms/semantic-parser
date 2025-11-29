@@ -49,8 +49,7 @@ describe("processSequence", () => {
     };
 
     const result = processSequence(doc);
-    expect(result[0].content).toBe("Normal bold");
-    expect(result[0].marks).toBeDefined();
+    expect(result[0].content).toBe("Normal <strong>bold</strong>");
   });
 
   test("processes nested lists", () => {

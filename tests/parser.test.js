@@ -17,7 +17,7 @@ describe("parseContent", () => {
 
     // Check groups
     expect(result.groups.main).toBeTruthy();
-    expect(result.groups.main.headings.title.content).toBe("Main Title");
+    expect(result.groups.main.header.title).toBe("Main Title");
 
     // Check byType
     expect(result.byType.headings).toHaveLength(1);
@@ -27,17 +27,16 @@ describe("parseContent", () => {
   test("correctly identifies pretitle", () => {
     const result = parseContent(withPretitle);
 
-    expect(result.groups.main.headings.pretitle).toBeTruthy();
-    expect(result.groups.main.headings.pretitle.content).toBe("PRETITLE");
-    expect(result.groups.main.headings.title.content).toBe("Main Title");
+    expect(result.groups.main.header.pretitle).toBeTruthy();
+    expect(result.groups.main.header.pretitle).toBe("PRETITLE");
+    expect(result.groups.main.header.title).toBe("Main Title");
   });
 
   test("preserves text formatting", () => {
     const result = parseContent(withFormattedText);
 
     const paragraph = result.sequence[0];
-    expect(paragraph.content).toBe("Normal bold and italic text.");
-    expect(paragraph.marks).toBeTruthy();
+    expect(paragraph.content).toBe("Normal <strong>bold</strong> and <em>italic</em> text.");
   });
 
   test("handles images with roles", () => {

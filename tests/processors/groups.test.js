@@ -24,9 +24,9 @@ describe("processGroups", () => {
 
     expect(result.metadata.dividerMode).toBe(false);
     expect(result.main).toBeTruthy();
-    expect(result.main.headings.title.content).toBe("Features");
+    expect(result.main.header.title).toBe("Features");
     expect(result.items).toHaveLength(2);
-    expect(result.items[0].headings.title.content).toBe("Feature One");
+    expect(result.items[0].header.title).toBe("Feature One");
   });
 
   test("correctly processes nested headings", () => {
@@ -34,10 +34,9 @@ describe("processGroups", () => {
     const result = processGroups(sequence);
 
     expect(result.main).toBeTruthy();
-    expect(result.main.headings.pretitle.content).toBe("WELCOME");
-    expect(result.main.headings.title.content).toBe("Main Title");
-    expect(result.main.headings.subtitle.content).toBe("Subtitle");
-    expect(result.main.headings.subsubtitle.content).toBe("Subsubtitle");
+    expect(result.main.header.pretitle).toBe("WELCOME");
+    expect(result.main.header.title).toBe("Main Title");
+    expect(result.main.header.subtitle).toBe("Subtitle");
   });
 
   test("handles multiple H1s by not creating main content", () => {
@@ -46,7 +45,7 @@ describe("processGroups", () => {
 
     expect(result.main).toBeNull();
     expect(result.items).toHaveLength(2);
-    expect(result.items[0].headings.title.content).toBe("First H1");
-    expect(result.items[1].headings.title.content).toBe("Second H1");
+    expect(result.items[0].header.title).toBe("First H1");
+    expect(result.items[1].header.title).toBe("Second H1");
   });
 });

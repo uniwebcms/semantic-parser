@@ -205,9 +205,9 @@ function processGroupContent(elements) {
         if (element.type === 'heading') {
             metadata.level ??= element.level;
 
-            if (element.level === 1) {
+            if (!header.title) {
                 header.title = element.content;
-            } else if (element.level === 2) {
+            } else if (!header.subtitle) {
                 header.subtitle = element.content;
             }
         } else if (element.type === 'list') {
