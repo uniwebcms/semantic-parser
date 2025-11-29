@@ -2,6 +2,8 @@
  * Path-based accessor for extracting values from parsed content
  */
 
+const { applyType, validateType } = require('./types');
+
 /**
  * Parse a path string into segments, handling array indices
  * @param {string} path - Path string (e.g., 'groups.main.body.imgs[0].url')
@@ -33,10 +35,19 @@ function parsePath(path) {
  * @param {*} options.defaultValue - Default value if path doesn't exist
  * @param {Function} options.transform - Transformation function to apply to value
  * @param {boolean} options.required - Throw error if value is missing
+ * @param {string} options.type - Field type for automatic transformation
+ * @param {boolean} options.treatEmptyAsDefault - Treat empty strings as missing
  * @returns {*} Value at path
  */
 function getByPath(parsed, path, options = {}) {
-    const { defaultValue, transform, required = false } = options;
+    const {
+        defaultValue,
+        transform,
+        required = false,
+        type,
+        treatEmptyAsDefault = false,
+        ...typeOptions
+    } = options;
 
     if (!parsed || !path) {
         if (required) {
@@ -71,12 +82,23 @@ function getByPath(parsed, path, options = {}) {
         }
     }
 
-    const value = current !== undefined ? current : defaultValue;
+    let value = current !== undefined ? current : defaultValue;
 
-    if (required && (value === undefined || value === null)) {
+    // Treat empty strings as missing if requested
+    if (treatEmptyAsDefault && value === '') {
+        value = defaultValue;
+    }
+
+    if (required && (value === undefined || value === null || value === '')) {
         throw new Error(`Required field missing at path: ${path}`);
     }
 
+    // Apply type transformation if specified
+    if (type && value !== undefined && value !== null) {
+        value = applyType(value, type, typeOptions);
+    }
+
+    // Apply custom transform after type transformation
     return transform ? transform(value) : value;
 }
 
@@ -84,27 +106,77 @@ function getByPath(parsed, path, options = {}) {
  * Extract multiple values using a schema
  * @param {Object} parsed - Parsed content from parseContent()
  * @param {Object} schema - Schema defining paths and transformations
+ * @param {Object} options - Extraction options
+ * @param {string} options.mode - Execution mode ('visual-editor' or 'build')
  * @returns {Object} Extracted values
  *
  * @example
  * const schema = {
- *   title: 'groups.main.header.title',
- *   image: { path: 'groups.main.body.imgs[0].url', defaultValue: '/placeholder.jpg' },
- *   description: { path: 'groups.main.body.paragraphs', transform: (p) => p.join(' ') }
+ *   title: {
+ *     path: 'groups.main.header.title',
+ *     type: 'plaintext',
+ *     maxLength: 60
+ *   },
+ *   image: {
+ *     path: 'groups.main.body.imgs[0].url',
+ *     type: 'image',
+ *     defaultValue: '/placeholder.jpg'
+ *   },
+ *   description: {
+ *     path: 'groups.main.body.paragraphs',
+ *     type: 'excerpt',
+ *     maxLength: 150
+ *   }
  * };
- * const data = extractBySchema(parsed, schema);
+ * const data = extractBySchema(parsed, schema, { mode: 'visual-editor' });
  */
-function extractBySchema(parsed, schema) {
+function extractBySchema(parsed, schema, options = {}) {
+    const { mode = 'visual-editor' } = options;
     const result = {};
+    const validationResults = [];
 
     for (const [key, config] of Object.entries(schema)) {
         // Allow shorthand: key: 'path.to.value'
         if (typeof config === 'string') {
             result[key] = getByPath(parsed, config);
         } else {
-            // Full config: { path, defaultValue, transform, required }
-            const { path, ...options } = config;
-            result[key] = getByPath(parsed, path, options);
+            // Full config: { path, type, defaultValue, transform, required, ... }
+            const { path, type, ...fieldOptions } = config;
+
+            // Extract value
+            result[key] = getByPath(parsed, path, { type, ...fieldOptions });
+
+            // Validate if type specified and in build mode
+            if (type && mode === 'build') {
+                const rawValue = getByPath(parsed, path, {
+                    defaultValue: fieldOptions.defaultValue
+                });
+                const errors = validateType(rawValue, type, {
+                    ...fieldOptions,
+                    fieldName: key
+                }, mode);
+                validationResults.push(...errors);
+            }
+        }
+    }
+
+    // In build mode, log validation results
+    if (mode === 'build' && validationResults.length > 0) {
+        const errors = validationResults.filter(v => v.severity === 'error');
+        const warnings = validationResults.filter(v => v.severity === 'warning');
+
+        if (warnings.length > 0) {
+            console.warn('Content validation warnings:');
+            warnings.forEach(w => {
+                console.warn(`  [${w.field}] ${w.message}${w.autoFix ? ' (auto-fixed)' : ''}`);
+            });
+        }
+
+        if (errors.length > 0) {
+            console.error('Content validation errors:');
+            errors.forEach(e => {
+                console.error(`  [${e.field}] ${e.message}`);
+            });
         }
     }
 
@@ -184,9 +256,56 @@ function mapArray(parsed, arrayPath, itemConfig) {
     });
 }
 
+/**
+ * Validate content against schema without extracting
+ * Useful for providing UI hints in visual editor
+ * @param {Object} parsed - Parsed content
+ * @param {Object} schema - Schema to validate against
+ * @param {Object} options - Validation options
+ * @param {string} options.mode - Execution mode ('visual-editor' or 'build')
+ * @returns {Object} Validation results by field
+ *
+ * @example
+ * const hints = validateSchema(parsed, schema);
+ * // {
+ * //   title: [{ type: 'max_length', severity: 'info', message: '...' }],
+ * //   image: [{ type: 'required', severity: 'error', message: '...' }]
+ * // }
+ */
+function validateSchema(parsed, schema, options = {}) {
+    const { mode = 'visual-editor' } = options;
+    const results = {};
+
+    for (const [key, config] of Object.entries(schema)) {
+        if (typeof config === 'string') {
+            continue; // No validation for shorthand
+        }
+
+        const { path, type, ...fieldOptions } = config;
+
+        if (type) {
+            const rawValue = getByPath(parsed, path, {
+                defaultValue: fieldOptions.defaultValue
+            });
+
+            const errors = validateType(rawValue, type, {
+                ...fieldOptions,
+                fieldName: key
+            }, mode);
+
+            if (errors.length > 0) {
+                results[key] = errors;
+            }
+        }
+    }
+
+    return results;
+}
+
 module.exports = {
     getByPath,
     extractBySchema,
+    validateSchema,
     hasPath,
     getFirstExisting,
     mapArray

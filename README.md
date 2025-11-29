@@ -194,7 +194,39 @@ sequence.forEach(element => {
 
 ## Content Mapping Utilities
 
-The parser includes optional mapping utilities to transform parsed content into component-specific formats. This is useful when components need data in a particular structure.
+The parser includes optional mapping utilities to transform parsed content into component-specific formats. Perfect for visual editors and component-based systems.
+
+### Type System (Recommended)
+
+Automatically transform content based on field types with context-aware behavior:
+
+```js
+const schema = {
+  title: {
+    path: "groups.main.header.title",
+    type: "plaintext",  // Auto-strips <strong>, <em>, etc.
+    maxLength: 60       // Auto-truncates intelligently
+  },
+  excerpt: {
+    path: "groups.main.body.paragraphs",
+    type: "excerpt",    // Auto-creates excerpt from paragraphs
+    maxLength: 150
+  },
+  image: {
+    path: "groups.main.body.imgs[0].url",
+    type: "image",
+    defaultValue: "/placeholder.jpg"
+  }
+};
+
+// Visual editor mode (default) - silent, graceful cleanup
+const data = mappers.extractBySchema(parsed, schema);
+
+// Build mode - validates and warns
+const data = mappers.extractBySchema(parsed, schema, { mode: 'build' });
+```
+
+**Field Types:** `plaintext`, `richtext`, `excerpt`, `number`, `image`, `link`
 
 ### Using Pre-Built Extractors
 

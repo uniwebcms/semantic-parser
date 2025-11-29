@@ -6,6 +6,7 @@
 const helpers = require('./helpers');
 const accessor = require('./accessor');
 const extractors = require('./extractors');
+const types = require('./types');
 
 module.exports = {
     // Helper utilities
@@ -16,6 +17,9 @@ module.exports = {
 
     // Common extractors
     extractors,
+
+    // Type system
+    types,
 
     // Convenience exports for direct access
     ...helpers,

@@ -4,11 +4,261 @@ This guide shows how to use the mapping utilities to transform parsed content in
 
 ## Overview
 
-The parser provides three types of mapping utilities:
+The parser provides mapping utilities designed for two contexts:
 
-1. **Helpers**: General-purpose utility functions
-2. **Accessor**: Path-based extraction with schema support
-3. **Extractors**: Pre-built patterns for common components
+- **Visual Editor Mode** (default): Gracefully handles content with silent cleanup, perfect for non-technical users
+- **Build Mode**: Validates content and warns about issues, ideal for development workflows
+
+### Mapping Tools
+
+1. **Type System**: Automatic transformation based on field types (plaintext, richtext, excerpt, etc.)
+2. **Helpers**: General-purpose utility functions
+3. **Accessor**: Path-based extraction with schema support
+4. **Extractors**: Pre-built patterns for common components
+
+## Type System (Recommended)
+
+The type system automatically transforms content based on component requirements, making it perfect for visual editors where users don't know about HTML/markdown.
+
+### Visual Editor Mode (Default)
+
+Gracefully handles content issues with silent, automatic cleanup:
+
+```js
+const schema = {
+  title: {
+    path: "groups.main.header.title",
+    type: "plaintext",  // Auto-strips HTML markup
+    maxLength: 60       // Auto-truncates with smart boundaries
+  },
+  description: {
+    path: "groups.main.body.paragraphs",
+    type: "excerpt",    // Auto-creates excerpt from paragraphs
+    maxLength: 150
+  },
+  image: {
+    path: "groups.main.body.imgs[0].url",
+    type: "image",      // Normalizes image data
+    defaultValue: "/placeholder.jpg",
+    treatEmptyAsDefault: true
+  }
+};
+
+// Visual editor mode (default) - silent cleanup
+const data = mappers.extractBySchema(parsed, schema);
+// {
+//   title: "Welcome to Our Platform",  // <strong> tags stripped
+//   description: "Get started with...", // Truncated, markup removed
+//   image: "/hero.jpg" or "/placeholder.jpg"
+// }
+```
+
+### Build Mode
+
+Validates content and provides warnings for developers:
+
+```js
+const data = mappers.extractBySchema(parsed, schema, { mode: 'build' });
+
+// Console output:
+// ⚠️ [title] Field contains HTML markup but expects plain text (auto-fixed)
+// ⚠️ [title] Text is 65 characters (max: 60) (auto-fixed)
+```
+
+### Available Field Types
+
+#### `plaintext`
+
+Strips all HTML markup, returning clean text. Perfect for titles, labels, and anywhere HTML shouldn't appear.
+
+```js
+{
+  title: {
+    path: "groups.main.header.title",
+    type: "plaintext",
+    maxLength: 60,              // Auto-truncate
+    boundary: "word",            // or "sentence", "character"
+    ellipsis: "...",
+    transform: (text) => text.toUpperCase()  // Additional transform
+  }
+}
+
+// Input: "Welcome to <strong>Our Platform</strong>"
+// Output: "Welcome to Our Platform"
+```
+
+#### `richtext`
+
+Preserves safe HTML while removing dangerous tags (script, iframe, etc.).
+
+```js
+{
+  description: {
+    path: "groups.main.body.paragraphs[0]",
+    type: "richtext",
+    allowedTags: ["strong", "em", "a", "br"],  // Customize allowed tags
+    stripTags: ["script", "style"]              // Additional tags to remove
+  }
+}
+
+// Input: "Text with <strong>bold</strong> and <script>bad</script>"
+// Output: "Text with <strong>bold</strong> and "
+```
+
+#### `excerpt`
+
+Auto-generates excerpt from content, stripping markup and truncating intelligently.
+
+```js
+{
+  excerpt: {
+    path: "groups.main.body.paragraphs",
+    type: "excerpt",
+    maxLength: 150,
+    boundary: "word",             // or "sentence"
+    preferFirstSentence: true     // Use first sentence if short enough
+  }
+}
+
+// Input: ["Long paragraph with <em>formatting</em>...", "More text..."]
+// Output: "Long paragraph with formatting..."
+```
+
+#### `number`
+
+Parses and optionally formats numbers.
+
+```js
+{
+  price: {
+    path: "groups.main.header.title",
+    type: "number",
+    format: {
+      decimals: 2,
+      thousands: ",",
+      decimal: "."
+    }
+  }
+}
+
+// Input: "1234.567"
+// Output: "1,234.57"
+```
+
+#### `image`
+
+Normalizes image data structure.
+
+```js
+{
+  image: {
+    path: "groups.main.body.imgs[0]",
+    type: "image",
+    defaultValue: "/placeholder.jpg",
+    defaultAlt: "Image"
+  }
+}
+
+// Input: "/hero.jpg" or { url: "/hero.jpg", alt: "Hero" }
+// Output: { url: "/hero.jpg", alt: "Hero", caption: null }
+```
+
+#### `link`
+
+Normalizes link data structure.
+
+```js
+{
+  cta: {
+    path: "groups.main.body.links[0]",
+    type: "link"
+  }
+}
+
+// Input: "http://example.com" or { href: "/page", label: "Click" }
+// Output: { href: "/page", label: "Click", target: "_self" }
+```
+
+### Validation for UI Hints
+
+Get validation results without extracting data - perfect for showing hints in visual editors:
+
+```js
+const hints = mappers.validateSchema(parsed, schema, { mode: 'visual-editor' });
+
+// {
+//   title: [{
+//     type: 'max_length',
+//     severity: 'info',
+//     message: 'Text is 65 characters (max: 60)',
+//     autoFix: true
+//   }],
+//   image: [{
+//     type: 'required',
+//     severity: 'error',
+//     message: 'Required image is missing',
+//     autoFix: false
+//   }]
+// }
+
+// Use in UI:
+// Title field: ℹ️ "Title is a bit long (will be trimmed to fit)"
+// Image field: ⚠️ "Image is required"
+```
+
+### Real-World Example
+
+```js
+// Component declares its content requirements
+const componentSchema = {
+  brand: {
+    path: "groups.main.header.pretitle",
+    type: "plaintext",
+    maxLength: 20,
+    transform: (text) => text.toUpperCase()
+  },
+  title: {
+    path: "groups.main.header.title",
+    type: "plaintext",
+    maxLength: 60,
+    required: true
+  },
+  subtitle: {
+    path: "groups.main.header.subtitle",
+    type: "plaintext",
+    maxLength: 100
+  },
+  description: {
+    path: "groups.main.body.paragraphs",
+    type: "excerpt",
+    maxLength: 200
+  },
+  image: {
+    path: "groups.main.body.imgs[0].url",
+    type: "image",
+    defaultValue: "/placeholder.jpg"
+  },
+  cta: {
+    path: "groups.main.body.links[0]",
+    type: "link"
+  }
+};
+
+// Engine extracts and transforms for component
+const componentData = mappers.extractBySchema(parsed, componentSchema);
+
+// Component receives clean, validated data:
+// {
+//   brand: "NEW PRODUCT",
+//   title: "Welcome to Our Platform",
+//   subtitle: "Get started today",
+//   description: "Transform how you create content...",
+//   image: "/hero.jpg",
+//   cta: { href: "/signup", label: "Get Started", target: "_self" }
+// }
+```
+
+---
 
 ## Quick Start
 
