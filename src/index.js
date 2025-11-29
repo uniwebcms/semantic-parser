@@ -1,6 +1,7 @@
 const { processSequence } = require('./processors/sequence');
 const { processGroups } = require('./processors/groups');
 const { processByType } = require('./processors/byType');
+const mappers = require('./mappers');
 
 /**
  * Parse ProseMirror/TipTap content into semantic structure
@@ -22,5 +23,6 @@ function parseContent(doc) {
 }
 
 module.exports = {
-    parseContent
+    parseContent,
+    mappers
 };

@@ -192,6 +192,73 @@ sequence.forEach(element => {
 });
 ```
 
+## Content Mapping Utilities
+
+The parser includes optional mapping utilities to transform parsed content into component-specific formats. This is useful when components need data in a particular structure.
+
+### Using Pre-Built Extractors
+
+```js
+const { parseContent, mappers } = require("@uniwebcms/semantic-parser");
+
+const parsed = parseContent(doc);
+
+// Extract hero component data
+const heroData = mappers.extractors.hero(parsed);
+// { title, subtitle, kicker, description, image, cta, ... }
+
+// Extract card data
+const cards = mappers.extractors.card(parsed, { useItems: true });
+
+// Extract statistics
+const stats = mappers.extractors.stats(parsed);
+// [{ value: "12", label: "Partner Labs" }, ...]
+
+// Extract navigation menu
+const nav = mappers.extractors.navigation(parsed);
+
+// Extract features list
+const features = mappers.extractors.features(parsed);
+```
+
+### Schema-Based Mapping
+
+Define custom mappings using schemas:
+
+```js
+const schema = {
+  brand: "groups.main.header.pretitle",
+  title: "groups.main.header.title",
+  subtitle: "groups.main.header.subtitle",
+  image: {
+    path: "groups.main.body.imgs[0].url",
+    defaultValue: "/placeholder.jpg"
+  },
+  actions: {
+    path: "groups.main.body.links",
+    transform: links => links.map(l => ({ label: l.label, type: "primary" }))
+  }
+};
+
+const componentData = mappers.accessor.extractBySchema(parsed, schema);
+```
+
+### Available Extractors
+
+- `hero` - Hero/banner sections
+- `card` - Card components
+- `article` - Article/blog content
+- `stats` - Statistics/metrics
+- `navigation` - Navigation menus
+- `features` - Feature lists
+- `testimonial` - Testimonials
+- `faq` - FAQ sections
+- `pricing` - Pricing tiers
+- `team` - Team members
+- `gallery` - Image galleries
+
+See **[Mapping Patterns Guide](./docs/mapping-patterns.md)** for complete documentation.
+
 ## Content Grouping
 
 The parser supports two grouping modes:
@@ -223,6 +290,7 @@ Inline formatting is preserved as HTML tags:
 
 - **[Content Writing Guide](./docs/guide.md)**: Learn how to structure content for optimal parsing
 - **[API Reference](./docs/api.md)**: Complete API documentation with all element types
+- **[Mapping Patterns Guide](./docs/mapping-patterns.md)**: Transform content to component-specific formats
 - **[File Structure](./docs/file-structure.md)**: Codebase organization
 
 ## Use Cases
