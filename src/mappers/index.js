@@ -3,12 +3,12 @@
  * into component-specific formats
  */
 
-const helpers = require('./helpers');
-const accessor = require('./accessor');
-const extractors = require('./extractors');
-const types = require('./types');
+import * as helpers from './helpers.js';
+import * as accessor from './accessor.js';
+import * as extractors from './extractors.js';
+import * as types from './types.js';
 
-module.exports = {
+export {
     // Helper utilities
     helpers,
 
@@ -19,10 +19,10 @@ module.exports = {
     extractors,
 
     // Type system
-    types,
-
-    // Convenience exports for direct access
-    ...helpers,
-    ...accessor,
-    ...extractors
+    types
 };
+
+// Re-export all functions for direct access
+export * from './helpers.js';
+export * from './accessor.js';
+export * from './extractors.js';

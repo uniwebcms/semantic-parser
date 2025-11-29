@@ -1,5 +1,5 @@
-const { parseContent } = require("../../src/index");
-const extractors = require("../../src/mappers/extractors");
+import { parseContent } from "../../src/index.js";
+import * as extractors from "../../src/mappers/extractors.js";
 
 describe("Mapper Extractors", () => {
   describe("hero", () => {

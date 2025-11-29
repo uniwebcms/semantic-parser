@@ -2,7 +2,7 @@
  * Path-based accessor for extracting values from parsed content
  */
 
-const { applyType, validateType } = require('./types');
+import { applyType, validateType } from './types.js';
 
 /**
  * Parse a path string into segments, handling array indices
@@ -302,7 +302,7 @@ function validateSchema(parsed, schema, options = {}) {
     return results;
 }
 
-module.exports = {
+export {
     getByPath,
     extractBySchema,
     validateSchema,

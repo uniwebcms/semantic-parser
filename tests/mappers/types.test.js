@@ -1,4 +1,4 @@
-const types = require("../../src/mappers/types");
+import * as types from "../../src/mappers/types.js";
 
 describe("Type System", () => {
   describe("stripMarkup", () => {

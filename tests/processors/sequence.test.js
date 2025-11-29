@@ -1,4 +1,4 @@
-const { processSequence } = require("../../src/processors/sequence");
+import { processSequence } from "../../src/processors/sequence.js";
 
 describe("processSequence", () => {
   test("processes basic document structure", () => {

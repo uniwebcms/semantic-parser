@@ -342,6 +342,6 @@ function processListItems(node, options = {}) {
     return items;
 }
 
-module.exports = {
+export {
     processSequence
 };

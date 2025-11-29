@@ -1,4 +1,4 @@
-const helpers = require("../../src/mappers/helpers");
+import * as helpers from "../../src/mappers/helpers.js";
 
 describe("Mapper Helpers", () => {
   describe("first", () => {

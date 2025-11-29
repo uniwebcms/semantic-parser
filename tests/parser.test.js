@@ -1,10 +1,10 @@
-const { parseContent } = require("../src/index");
-const {
+import { parseContent } from "../src/index.js";
+import {
   simpleDocument,
   withPretitle,
   withFormattedText,
-  withImage,
-} = require("./fixtures/basic");
+  withImage
+} from "./fixtures/basic.js";
 
 describe("parseContent", () => {
   test("handles simple document structure", () => {

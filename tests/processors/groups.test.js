@@ -1,11 +1,11 @@
-const { processGroups } = require("../../src/processors/groups");
-const {
+import { processGroups } from "../../src/processors/groups.js";
+import {
   dividerGroups,
   headingGroups,
   nestedHeadings,
-  multipleH1s,
-} = require("../fixtures/groups");
-const { processSequence } = require("../../src/processors/sequence");
+  multipleH1s
+} from "../fixtures/groups.js";
+import { processSequence } from "../../src/processors/sequence.js";
 
 describe("processGroups", () => {
   test("handles divider-based groups", () => {

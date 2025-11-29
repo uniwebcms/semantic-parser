@@ -483,7 +483,7 @@ function validateType(value, type, rules = {}, context = 'visual-editor') {
     return handler.validate(value, rules, context);
 }
 
-module.exports = {
+export {
     typeHandlers,
     applyType,
     validateType,

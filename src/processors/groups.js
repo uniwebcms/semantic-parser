@@ -363,6 +363,6 @@ function identifyMainContent(groups) {
     return first ? !second || first < second : false;
 }
 
-module.exports = {
+export {
     processGroups
 };

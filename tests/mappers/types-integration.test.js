@@ -1,5 +1,6 @@
-const { parseContent } = require("../../src/index");
-const accessor = require("../../src/mappers/accessor");
+import { jest } from '@jest/globals';
+import { parseContent } from "../../src/index.js";
+import * as accessor from "../../src/mappers/accessor.js";
 
 describe("Type System Integration", () => {
   const mockDoc = {

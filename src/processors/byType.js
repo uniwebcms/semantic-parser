@@ -124,6 +124,6 @@ function addCollectionHelpers(collections) {
   };
 }
 
-module.exports = {
-  processByType,
+export {
+  processByType
 };

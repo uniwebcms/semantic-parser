@@ -1,4 +1,4 @@
-const { getRoleFromNode, isValidRole } = require("../../src/utils/role");
+import { getRoleFromNode, isValidRole } from "../../src/utils/role.js";
 
 describe("role utilities", () => {
   test("extracts role from node attributes", () => {

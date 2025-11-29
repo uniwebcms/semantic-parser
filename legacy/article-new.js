@@ -11,9 +11,9 @@
  * - ~80% code reduction while preserving all functionality
  */
 
-const { parseContent } = require('../src/index');
-const { extractors } = require('../src/mappers');
-const Profile = require('./profile');
+import { parseContent } from '../src/index.js';
+import { extractors } from '../src/mappers/index.js';
+import Profile from './profile.js';
 
 export default class Article {
     constructor(data, options) {

@@ -2,7 +2,7 @@
  * Pre-built extractors for common component patterns
  */
 
-const { first, joinParagraphs } = require('./helpers');
+import { first, joinParagraphs } from './helpers.js';
 
 /**
  * Extract hero component data
@@ -351,7 +351,7 @@ function legacy(parsed) {
     };
 }
 
-module.exports = {
+export {
     hero,
     card,
     article,

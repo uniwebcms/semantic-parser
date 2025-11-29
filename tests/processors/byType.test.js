@@ -1,6 +1,6 @@
-const { processByType } = require("../../src/processors/byType");
-const { processSequence } = require("../../src/processors/sequence");
-const { mixedContent } = require("../fixtures/complex");
+import { processByType } from "../../src/processors/byType.js";
+import { processSequence } from "../../src/processors/sequence.js";
+import { mixedContent } from "../fixtures/complex.js";
 
 describe("processByType", () => {
   test("organizes content by type with context", () => {

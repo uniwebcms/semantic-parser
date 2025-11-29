@@ -2,7 +2,7 @@
  * Helper utilities for content transformation
  */
 
-const { createExcerpt, stripMarkup } = require('./types');
+import { createExcerpt, stripMarkup } from './types.js';
 
 /**
  * Get the first item from an array or return default value
@@ -213,7 +213,7 @@ function countWords(text) {
     return stripMarkup(plain).split(/\s+/).filter(Boolean).length;
 }
 
-module.exports = {
+export {
     first,
     last,
     transformArray,

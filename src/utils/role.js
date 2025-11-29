@@ -47,7 +47,7 @@ function isValidRole(type, role) {
   return validRoles[type]?.includes(role) || false;
 }
 
-module.exports = {
+export {
   getRoleFromNode,
   isValidRole,
 };

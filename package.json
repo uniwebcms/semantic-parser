@@ -2,10 +2,11 @@
     "name": "@uniwebcms/semantic-parser",
     "version": "1.1.2",
     "description": "Semantic parser for ProseMirror/TipTap content structures",
+    "type": "module",
     "main": "src/index.js",
     "scripts": {
-        "test": "jest",
-        "test-report": "jest --json > test-results.json 2>&1"
+        "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+        "test-report": "NODE_OPTIONS=--experimental-vm-modules jest --json > test-results.json 2>&1"
     },
     "keywords": [
         "prosemirror",
