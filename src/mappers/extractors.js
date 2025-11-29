@@ -2,7 +2,7 @@
  * Pre-built extractors for common component patterns
  */
 
-const { first, joinText } = require('./helpers');
+const { first, joinParagraphs } = require('./helpers');
 
 /**
  * Extract hero component data
@@ -18,7 +18,7 @@ function hero(parsed) {
         title: main?.header?.title || null,
         subtitle: main?.header?.subtitle || null,
         kicker: main?.header?.pretitle || null,
-        description: joinText(main?.body?.paragraphs),
+        description: main?.body?.paragraphs || [],
         image: first(main?.body?.imgs)?.url || null,
         imageAlt: first(main?.body?.imgs)?.alt || null,
         banner: main?.banner?.url || null,
@@ -46,7 +46,7 @@ function card(parsed, options = {}) {
         return {
             title: group.header?.title || null,
             subtitle: group.header?.subtitle || null,
-            description: joinText(group.body?.paragraphs),
+            description: group.body?.paragraphs || [],
             image: first(group.body?.imgs)?.url || null,
             imageAlt: first(group.body?.imgs)?.alt || null,
             icon: first(group.body?.icons) || null,
@@ -103,7 +103,7 @@ function stats(parsed) {
     return items.map(item => ({
         value: item.header?.title || null,
         label: item.header?.subtitle || first(item.body?.paragraphs) || null,
-        description: joinText(item.body?.paragraphs)
+        description: item.body?.paragraphs || []
     })).filter(stat => stat.value);
 }
 
@@ -127,7 +127,7 @@ function navigation(parsed) {
         const firstList = first(item.body?.lists);
         if (firstList && firstList.length > 0) {
             navItem.children = firstList.map(listItem => ({
-                label: joinText(listItem.paragraphs) || null,
+                label: joinParagraphs(listItem.paragraphs) || null,
                 href: first(listItem.links)?.href || null,
                 icon: first(listItem.icons) || null
             })).filter(child => child.label);
@@ -150,7 +150,7 @@ function features(parsed) {
     return items.map(item => ({
         title: item.header?.title || null,
         subtitle: item.header?.subtitle || null,
-        description: joinText(item.body?.paragraphs),
+        description: item.body?.paragraphs || [],
         icon: first(item.body?.icons) || null,
         image: first(item.body?.imgs)?.url || null,
         link: first(item.body?.links) || null
@@ -173,7 +173,7 @@ function testimonial(parsed, options = {}) {
         if (!group) return null;
 
         return {
-            quote: joinText(group.body?.paragraphs),
+            quote: group.body?.paragraphs || [],
             author: group.header?.title || null,
             role: group.header?.subtitle || null,
             company: group.header?.pretitle || null,
@@ -202,7 +202,7 @@ function faq(parsed) {
 
     return items.map(item => ({
         question: item.header?.title || null,
-        answer: joinText(item.body?.paragraphs),
+        answer: item.body?.paragraphs || [],
         links: item.body?.links || []
     })).filter(item => item.question);
 }
@@ -225,7 +225,7 @@ function pricing(parsed) {
             price: item.header?.subtitle || null,
             description: first(item.body?.paragraphs) || null,
             features: firstList ? firstList.map(listItem =>
-                joinText(listItem.paragraphs)
+                joinParagraphs(listItem.paragraphs)
             ).filter(Boolean) : [],
             cta: first(item.body?.links) || first(item.body?.buttons) || null,
             highlighted: item.header?.pretitle?.toLowerCase().includes('popular') || false
@@ -247,7 +247,7 @@ function team(parsed) {
         name: item.header?.title || null,
         role: item.header?.subtitle || null,
         department: item.header?.pretitle || null,
-        bio: joinText(item.body?.paragraphs),
+        bio: item.body?.paragraphs || [],
         image: first(item.body?.imgs)?.url || null,
         imageAlt: first(item.body?.imgs)?.alt || null,
         links: item.body?.links || []

@@ -39,7 +39,7 @@ describe("Mapper Extractors", () => {
       expect(hero.title).toBe("Welcome");
       expect(hero.subtitle).toBe("Get started today");
       expect(hero.kicker).toBe("NEW");
-      expect(hero.description).toBe("First paragraph Second paragraph");
+      expect(hero.description).toEqual(["First paragraph", "Second paragraph"]);
     });
   });
 
@@ -64,7 +64,7 @@ describe("Mapper Extractors", () => {
       const card = extractors.card(parsed);
 
       expect(card.title).toBe("Card Title");
-      expect(card.description).toBe("Card description");
+      expect(card.description).toEqual(["Card description"]);
     });
 
     test("extracts multiple cards from items", () => {
@@ -202,7 +202,7 @@ describe("Mapper Extractors", () => {
       expect(features).toHaveLength(2);
       expect(features[0].title).toBe("Fast");
       expect(features[0].subtitle).toBe("Lightning quick");
-      expect(features[0].description).toBe("Optimized for speed");
+      expect(features[0].description).toEqual(["Optimized for speed"]);
       expect(features[1].title).toBe("Secure");
     });
   });
@@ -247,9 +247,9 @@ describe("Mapper Extractors", () => {
 
       expect(faq).toHaveLength(2);
       expect(faq[0].question).toBe("How does it work?");
-      expect(faq[0].answer).toBe("It works by processing content.");
+      expect(faq[0].answer).toEqual(["It works by processing content."]);
       expect(faq[1].question).toBe("Is it free?");
-      expect(faq[1].answer).toBe("Yes, it's open source.");
+      expect(faq[1].answer).toEqual(["Yes, it's open source."]);
     });
   });
 

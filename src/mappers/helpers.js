@@ -2,6 +2,8 @@
  * Helper utilities for content transformation
  */
 
+const { createExcerpt, stripMarkup } = require('./types');
+
 /**
  * Get the first item from an array or return default value
  * @param {Array} arr - Array to get first item from
@@ -180,6 +182,37 @@ function safe(extractFn, defaultValue = null) {
     };
 }
 
+/**
+ * Join paragraphs into a single string
+ * @param {Array|string} paragraphs - Array of paragraphs or single paragraph
+ * @param {string} separator - Separator to use between paragraphs
+ * @returns {string} Joined text
+ */
+function joinParagraphs(paragraphs, separator = ' ') {
+    if (!Array.isArray(paragraphs)) return paragraphs || '';
+    return paragraphs.filter(Boolean).join(separator);
+}
+
+/**
+ * Create an excerpt from paragraphs
+ * @param {Array|string} paragraphs - Array of paragraphs or single paragraph
+ * @param {Object} options - Excerpt options (maxLength, boundary, ellipsis)
+ * @returns {string} Generated excerpt
+ */
+function excerptFromParagraphs(paragraphs, options = {}) {
+    return createExcerpt(paragraphs, options);
+}
+
+/**
+ * Count words in text or paragraphs
+ * @param {Array|string} text - Text or array of paragraphs
+ * @returns {number} Word count
+ */
+function countWords(text) {
+    const plain = Array.isArray(text) ? text.join(' ') : text;
+    return stripMarkup(plain).split(/\s+/).filter(Boolean).length;
+}
+
 module.exports = {
     first,
     last,
@@ -194,5 +227,8 @@ module.exports = {
     omit,
     get,
     compact,
-    safe
+    safe,
+    joinParagraphs,
+    excerptFromParagraphs,
+    countWords
 };

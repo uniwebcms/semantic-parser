@@ -156,4 +156,58 @@ describe("Mapper Helpers", () => {
       expect(fn(null)).toBe("DEFAULT");
     });
   });
+
+  describe("joinParagraphs", () => {
+    test("joins array of paragraphs with default separator", () => {
+      expect(helpers.joinParagraphs(["First paragraph", "Second paragraph"])).toBe("First paragraph Second paragraph");
+    });
+
+    test("joins with custom separator", () => {
+      expect(helpers.joinParagraphs(["Para 1", "Para 2"], "\n\n")).toBe("Para 1\n\nPara 2");
+    });
+
+    test("filters out falsy values", () => {
+      expect(helpers.joinParagraphs(["Text", null, "", "More text"])).toBe("Text More text");
+    });
+
+    test("returns string as-is if not an array", () => {
+      expect(helpers.joinParagraphs("Already a string")).toBe("Already a string");
+    });
+
+    test("returns empty string for null", () => {
+      expect(helpers.joinParagraphs(null)).toBe("");
+    });
+  });
+
+  describe("excerptFromParagraphs", () => {
+    test("creates excerpt from array of paragraphs", () => {
+      const paragraphs = ["First paragraph with some text", "Second paragraph with more"];
+      const excerpt = helpers.excerptFromParagraphs(paragraphs, { maxLength: 30 });
+      expect(excerpt.length).toBeLessThanOrEqual(33); // 30 + "..."
+    });
+
+    test("creates excerpt from single string", () => {
+      const text = "This is a long piece of text that should be truncated";
+      const excerpt = helpers.excerptFromParagraphs(text, { maxLength: 20 });
+      expect(excerpt.length).toBeLessThanOrEqual(23); // 20 + "..."
+    });
+  });
+
+  describe("countWords", () => {
+    test("counts words in a string", () => {
+      expect(helpers.countWords("Hello world")).toBe(2);
+    });
+
+    test("counts words in array of paragraphs", () => {
+      expect(helpers.countWords(["First paragraph", "Second paragraph"])).toBe(4);
+    });
+
+    test("strips markup before counting", () => {
+      expect(helpers.countWords("<strong>Bold</strong> and <em>italic</em> text")).toBe(4);
+    });
+
+    test("handles multiple spaces", () => {
+      expect(helpers.countWords("Word   with    spaces")).toBe(3);
+    });
+  });
 });
