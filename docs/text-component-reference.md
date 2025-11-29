@@ -14,12 +14,11 @@ This is a **complete, production-ready implementation** that you can copy direct
 cp reference/Text.js src/components/Text.js
 ```
 
-**2. Install DOMPurify dependency:**
-```bash
-npm install dompurify
-```
+**2. No additional dependencies needed** - Just React
 
-**3. Use in your components:**
+**3. Sanitize at engine level** - See [Sanitization Tools](#sanitization-tools) below
+
+**4. Use in your components:**
 ```jsx
 import Text, { H1, P } from './components/Text';
 import { parseContent, mappers } from '@uniwebcms/semantic-parser';
@@ -41,7 +40,6 @@ The Text component provides a unified interface for rendering text content, whet
 - Supporting rich HTML formatting (bold, italic, color marks)
 - Semantic heading structures
 - Empty content filtering
-- Performance optimization with memoization
 
 ## Architecture Decision: Where to Sanitize
 
@@ -86,10 +84,10 @@ import React from 'react';
  * @param {string} [props.className] - CSS class for styling
  * @param {string} [props.lineAs] - Tag for array items (default: 'div' for headings, 'p' for others)
  */
-const Text = React.memo(({ text, as = 'p', className, lineAs }) => {
+const Text = ({ text, as = 'p', className, lineAs }) => {
   const isArray = Array.isArray(text);
   const Tag = as;
-  const isHeading = /^h[1-6]$/.test(as);
+  const isHeading = as === 'h1' || as === 'h2' || as === 'h3' || as === 'h4' || as === 'h5' || as === 'h6';
 
   // Filter out empty content
   const filterEmpty = (arr) => arr.filter(item => item && item.trim() !== '');
@@ -486,10 +484,13 @@ const Text: React.FC<TextProps> = ({ ... }) => { ... };
 
 ## Performance Considerations
 
-1. **Memoization** - Use `React.memo` to prevent unnecessary re-renders
-2. **Sanitize once** - At engine level, not in component
+1. **Sanitize once** - At engine level, not in component
+2. **Memoize data** - Cache parsed/extracted data at the engine level with `useMemo`
 3. **Filter early** - Remove empty content during extraction if possible
-4. **Batch updates** - Prepare all data before rendering
+4. **Use proper keys** - In lists, use stable unique keys (not array indices)
+5. **Batch updates** - Prepare all data before rendering
+
+**Note:** The Text component itself is simple and fast. No need for `React.memo` unless profiling proves it's a bottleneck.
 
 ## Browser Support
 

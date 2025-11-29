@@ -1,23 +1,24 @@
 import React from 'react';
-import DOMPurify from 'dompurify';
 
 /**
  * Text - A smart typography component for rendering content from semantic-parser
  *
  * Features:
  * - Handles single strings or arrays of paragraphs
- * - Built-in HTML sanitization with DOMPurify
  * - Smart semantic defaults for different content types
  * - Automatic filtering of empty content
- * - Performance optimized with memoization
+ *
+ * Security Model:
+ * - Assumes content is ALREADY SANITIZED at the engine level
+ * - Does NOT sanitize HTML (that's the engine's responsibility)
+ * - Trusts the data it receives and renders it as-is
  *
  * @param {Object} props
  * @param {string|string[]} props.text - The content to render. Can be a string or an array of strings.
  * @param {string} [props.as='p'] - The tag to use for the wrapper or primary semantic element (e.g. 'h1', 'p', 'div').
- * @param {boolean} [props.html=true] - If true, renders content as sanitized HTML.
+ * @param {boolean} [props.html=true] - If true, renders content as HTML. If false, renders as plain text.
  * @param {string} [props.className] - Optional className to apply to the outer wrapper or individual elements.
  * @param {string} [props.lineAs] - For array inputs: tag to wrap each line. Defaults to 'div' for headings, 'p' for others.
- * @param {Object} [props.sanitizeConfig] - Custom DOMPurify configuration for HTML sanitization.
  *
  * @example
  * // Simple paragraph (semantic default)
@@ -32,7 +33,7 @@ import DOMPurify from 'dompurify';
  * // Multiple paragraphs (clean semantic output)
  * <Text text={["First paragraph", "Second paragraph"]} />
  *
- * // Rich HTML content (automatically sanitized by default)
+ * // Rich HTML content (assumes already sanitized by engine)
  * <Text text={["Safe <strong>bold</strong> text", "With <em>emphasis</em>"]} />
  *
  * // Plain text when HTML is disabled
@@ -41,128 +42,93 @@ import DOMPurify from 'dompurify';
  * // Explicit div wrapper when needed
  * <Text text={["Item 1", "Item 2"]} as="div" lineAs="span" />
  */
-const Text = React.memo(
-  ({ text, as = 'p', html = true, className, lineAs, sanitizeConfig }) => {
-    const isArray = Array.isArray(text);
-    const Tag = as;
-    const isHeading = /^h[1-6]$/.test(as);
+function Text({ text, as = 'p', html = true, className, lineAs }) {
+  const isArray = Array.isArray(text);
+  const Tag = as;
+  const isHeading = as === 'h1' || as === 'h2' || as === 'h3' || as === 'h4' || as === 'h5' || as === 'h6';
 
-    // Default sanitization config - allows common formatting and color marks
-    const defaultSanitizeConfig = {
-      ALLOWED_TAGS: ['strong', 'em', 'mark', 'span', 'a', 'code', 'br'],
-      ALLOWED_ATTR: ['href', 'class', 'data-variant', 'target', 'rel'],
-      ALLOW_DATA_ATTR: false,
-    };
+  /**
+   * Filter out empty or whitespace-only strings
+   * @param {string[]} contentArray - Array to filter
+   * @returns {string[]} Filtered array
+   */
+  const filterEmptyContent = (contentArray) => {
+    return contentArray.filter(
+      (item) => typeof item === 'string' && item.trim() !== ''
+    );
+  };
 
-    const sanitizerConfig = sanitizeConfig || defaultSanitizeConfig;
+  // Single string input
+  if (!isArray) {
+    if (!text || text.trim() === '') return null;
 
-    /**
-     * Sanitize HTML content safely
-     * @param {string} content - Content to sanitize
-     * @returns {string} Sanitized content
-     */
-    const sanitizeHTML = (content) => {
-      if (!content || typeof content !== 'string') return '';
-
-      try {
-        return DOMPurify.sanitize(content, sanitizerConfig);
-      } catch (error) {
-        console.warn(
-          'Text component: HTML sanitization failed, falling back to plain text:',
-          error
-        );
-        return content.replace(/<[^>]*>/g, ''); // Strip tags as fallback
-      }
-    };
-
-    /**
-     * Filter out empty or whitespace-only strings
-     * @param {string[]} contentArray - Array to filter
-     * @returns {string[]} Filtered array
-     */
-    const filterEmptyContent = (contentArray) => {
-      return contentArray.filter(
-        (item) => typeof item === 'string' && item.trim() !== ''
-      );
-    };
-
-    // Single string input
-    if (!isArray) {
-      if (!text || text.trim() === '') return null;
-
-      if (html) {
-        const sanitizedHTML = sanitizeHTML(text);
-        return (
-          <Tag
-            className={className}
-            dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
-          />
-        );
-      }
-      return <Tag className={className}>{text}</Tag>;
-    }
-
-    // Array input - filter empty content first
-    const filteredText = filterEmptyContent(text);
-
-    if (filteredText.length === 0) {
-      return null; // Don't render anything for empty arrays
-    }
-
-    // Determine the line wrapper tag with smart defaults
-    const getLineTag = () => {
-      if (lineAs) return lineAs;
-      return isHeading ? 'div' : 'p';
-    };
-
-    const LineTag = getLineTag();
-
-    // Multi-line heading: wrap all lines in a single heading tag
-    if (isHeading) {
+    if (html) {
       return (
-        <Tag className={className}>
-          {filteredText.map((line, i) => {
-            if (html) {
-              const sanitizedHTML = sanitizeHTML(line);
-              return (
-                <LineTag
-                  key={i}
-                  dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
-                />
-              );
-            }
-            return <LineTag key={i}>{line}</LineTag>;
-          })}
-        </Tag>
+        <Tag
+          className={className}
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
       );
     }
+    return <Tag className={className}>{text}</Tag>;
+  }
 
-    // Non-heading arrays: render each line as separate element
+  // Array input - filter empty content first
+  const filteredText = filterEmptyContent(text);
+
+  if (filteredText.length === 0) {
+    return null; // Don't render anything for empty arrays
+  }
+
+  // Determine the line wrapper tag with smart defaults
+  const getLineTag = () => {
+    if (lineAs) return lineAs;
+    return isHeading ? 'div' : 'p';
+  };
+
+  const LineTag = getLineTag();
+
+  // Multi-line heading: wrap all lines in a single heading tag
+  if (isHeading) {
     return (
-      <>
+      <Tag className={className}>
         {filteredText.map((line, i) => {
           if (html) {
-            const sanitizedHTML = sanitizeHTML(line);
             return (
               <LineTag
                 key={i}
-                className={className}
-                dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
+                dangerouslySetInnerHTML={{ __html: line }}
               />
             );
           }
-          return (
-            <LineTag key={i} className={className}>
-              {line}
-            </LineTag>
-          );
+          return <LineTag key={i}>{line}</LineTag>;
         })}
-      </>
+      </Tag>
     );
   }
-);
 
-Text.displayName = 'Text';
+  // Non-heading arrays: render each line as separate element
+  return (
+    <>
+      {filteredText.map((line, i) => {
+        if (html) {
+          return (
+            <LineTag
+              key={i}
+              className={className}
+              dangerouslySetInnerHTML={{ __html: line }}
+            />
+          );
+        }
+        return (
+          <LineTag key={i} className={className}>
+            {line}
+          </LineTag>
+        );
+      })}
+    </>
+  );
+}
 
 // ============================================================================
 // Semantic Wrapper Components - Thin wrappers around Text for common use cases

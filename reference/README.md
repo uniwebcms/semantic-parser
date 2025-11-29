@@ -10,13 +10,15 @@ A complete, production-ready React component for rendering content extracted by 
 
 **Features:**
 - Handles single strings or arrays of paragraphs
-- Built-in HTML sanitization with DOMPurify
 - Smart semantic defaults (headings, paragraphs, divs)
 - Automatic empty content filtering
-- Performance optimized with React.memo
 - Semantic wrapper components (H1-H6, P, PlainText, Div)
-- Configurable sanitization
 - Support for color marks and rich formatting
+- **Trusts engine-sanitized data** - No component-level sanitization
+- Simple and lightweight - no performance overhead
+
+**Security Model:**
+This component assumes content is **already sanitized by your engine**. It does NOT sanitize HTML itself. See the [Sanitization](#sanitization) section below.
 
 **Installation:**
 
@@ -25,14 +27,11 @@ A complete, production-ready React component for rendering content extracted by 
    cp reference/Text.js src/components/Text.js
    ```
 
-2. **Install DOMPurify dependency:**
-   ```bash
-   npm install dompurify
-   # or
-   yarn add dompurify
-   ```
+2. **No additional dependencies needed** - Just React
 
-3. **Use in your components:**
+3. **Sanitize at engine level** (see [Sanitization](#sanitization))
+
+4. **Use in your components:**
    ```jsx
    import Text, { H1, P } from './components/Text';
    import { parseContent, mappers } from '@uniwebcms/semantic-parser';
@@ -64,11 +63,6 @@ interface TextProps {
   html?: boolean;
   className?: string;
   lineAs?: string;
-  sanitizeConfig?: {
-    ALLOWED_TAGS?: string[];
-    ALLOWED_ATTR?: string[];
-    ALLOW_DATA_ATTR?: boolean;
-  };
 }
 
 declare const Text: React.FC<TextProps>;
@@ -85,33 +79,57 @@ export const PlainText: React.FC<Omit<TextProps, 'html'>>;
 export const Div: React.FC<Omit<TextProps, 'as'>>;
 ```
 
+## Sanitization
+
+**IMPORTANT:** This component does NOT sanitize HTML. Sanitization happens at the **engine level**.
+
+### Why Engine-Level Sanitization?
+
+1. **Performance** - Sanitize once during data preparation, not on every render
+2. **Context-aware** - Engine knows if content is from trusted TipTap or external sources
+3. **Cacheable** - Sanitized content can be memoized
+4. **Clear responsibility** - Engine owns the data pipeline
+
+### How to Sanitize
+
+Use the parser's built-in utilities in your engine:
+
+```javascript
+import { sanitizeHtml } from '@uniwebcms/semantic-parser/mappers/types';
+import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+
+// In your engine (NOT in the component)
+function prepareHeroData(document) {
+  const parsed = parseContent(document);
+  const hero = mappers.extractors.hero(parsed);
+
+  // Sanitize here, before passing to component
+  return {
+    ...hero,
+    title: sanitizeHtml(hero.title, {
+      allowedTags: ['strong', 'em', 'mark', 'span'],
+      allowedAttr: ['class', 'data-variant']
+    }),
+    description: hero.description.map(p => sanitizeHtml(p))
+  };
+}
+
+// Component receives clean data
+const heroData = prepareHeroData(doc);
+<H1 text={heroData.title} />  {/* Already sanitized */}
+```
+
+### When to Sanitize
+
+- **Always**: External content, user-generated content
+- **Optional**: Trusted TipTap editor with locked schema
+- **Never needed**: Hard-coded content in your app
+
+See [docs/text-component-reference.md](../docs/text-component-reference.md#sanitization-tools) for detailed sanitization guidance.
+
 ## Customization
 
 These reference implementations are designed to be copied and customized for your needs:
-
-### Modify Sanitization Config
-
-```jsx
-import Text from './components/Text';
-
-// More restrictive sanitization
-<Text
-  text={content}
-  sanitizeConfig={{
-    ALLOWED_TAGS: ['strong', 'em'],
-    ALLOWED_ATTR: [],
-  }}
-/>
-
-// More permissive for rich content
-<Text
-  text={content}
-  sanitizeConfig={{
-    ALLOWED_TAGS: ['strong', 'em', 'mark', 'span', 'a', 'code', 'br', 'ul', 'li'],
-    ALLOWED_ATTR: ['href', 'class', 'data-variant', 'target', 'rel'],
-  }}
-/>
-```
 
 ### Add Custom Styling Props
 
