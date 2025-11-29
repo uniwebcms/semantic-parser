@@ -263,7 +263,7 @@ const componentData = mappers.extractBySchema(parsed, componentSchema);
 ## Quick Start
 
 ```js
-const { parseContent, mappers } = require("@uniwebcms/semantic-parser");
+import { parseContent, mappers } from "@uniwebcms/semantic-parser";
 
 const parsed = parseContent(doc);
 

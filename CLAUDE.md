@@ -41,12 +41,15 @@ The parser processes content through three distinct stages, each building on the
 
 The main entry point (`src/index.js`) returns all three views:
 ```js
-{
-  raw: doc,        // Original ProseMirror document
-  sequence: [...], // Flat sequence of elements
-  groups: {...},   // Semantic groups with main/items
-  byType: {...}    // Elements organized by type
-}
+import { parseContent } from './src/index.js';
+
+const result = parseContent(doc);
+// {
+//   raw: doc,        // Original ProseMirror document
+//   sequence: [...], // Flat sequence of elements
+//   groups: {...},   // Semantic groups with main/items
+//   byType: {...}    // Elements organized by type
+// }
 ```
 
 ### Content Group Structure

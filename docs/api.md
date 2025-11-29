@@ -1,12 +1,22 @@
 # API Reference
 
-## parseContent(doc)
+## parseContent(doc, options)
 
 Parses a ProseMirror/TipTap document into three semantic views.
+
+### Import
+
+```js
+import { parseContent } from '@uniwebcms/semantic-parser';
+```
 
 ### Parameters
 
 - `doc` (Object): A ProseMirror/TipTap document object with `type: "doc"` and `content` array
+- `options` (Object, optional): Parsing options
+  - `pretitleLevel` (number): Heading level for pretitle detection (2 or 3). Default: 3
+  - `parseCodeAsJson` (boolean): Parse code blocks as JSON for properties. Default: false
+  - `extractBodyHeadings` (boolean): Extract headings from body content. Default: false
 
 ### Returns
 
@@ -233,7 +243,7 @@ byType.getElementsByHeadingContext((heading) => heading.level === 2)
 ### Basic Usage
 
 ```js
-const { parseContent } = require("@uniwebcms/semantic-parser");
+import { parseContent } from "@uniwebcms/semantic-parser";
 
 const doc = {
   type: "doc",

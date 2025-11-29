@@ -19,7 +19,7 @@ npm install @uniwebcms/semantic-parser
 ## Quick Start
 
 ```js
-const { parseContent } = require("@uniwebcms/semantic-parser");
+import { parseContent } from "@uniwebcms/semantic-parser";
 
 // Your ProseMirror/TipTap document
 const doc = {
@@ -231,7 +231,7 @@ const data = mappers.extractBySchema(parsed, schema, { mode: 'build' });
 ### Using Pre-Built Extractors
 
 ```js
-const { parseContent, mappers } = require("@uniwebcms/semantic-parser");
+import { parseContent, mappers } from "@uniwebcms/semantic-parser";
 
 const parsed = parseContent(doc);
 
@@ -324,13 +324,13 @@ See **[Text Component Reference](./docs/text-component-reference.md)** for imple
 Sanitize content at the engine level (during data preparation), not in components:
 
 ```javascript
-import { sanitizeHtml } from '@uniwebcms/semantic-parser/mappers/types';
+import { parseContent, mappers } from '@uniwebcms/semantic-parser';
 
 function prepareData(parsed) {
   const hero = mappers.extractors.hero(parsed);
   return {
     ...hero,
-    title: sanitizeHtml(hero.title, {
+    title: mappers.types.sanitizeHtml(hero.title, {
       allowedTags: ['strong', 'em', 'mark', 'span'],
       allowedAttr: ['class', 'data-variant']
     })
