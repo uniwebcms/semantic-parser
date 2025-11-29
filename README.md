@@ -291,6 +291,55 @@ const componentData = mappers.accessor.extractBySchema(parsed, schema);
 
 See **[Mapping Patterns Guide](./docs/mapping-patterns.md)** for complete documentation.
 
+## Rendering Content
+
+After extracting content, render it using a Text component that handles paragraph arrays, rich HTML, and formatting marks.
+
+### Text Component Pattern
+
+```jsx
+import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { H1, P } from './components/Text';
+
+const parsed = parseContent(doc);
+const hero = mappers.extractors.hero(parsed);
+
+// Render extracted content
+<>
+  <H1 text={hero.title} />
+  <P text={hero.description} />  {/* Handles arrays automatically */}
+</>
+```
+
+The Text component:
+- **Handles arrays** - Renders `["Para 1", "Para 2"]` as separate paragraphs
+- **Supports rich HTML** - Preserves formatting marks
+- **Multi-line headings** - Wraps multiple lines in semantic heading tags
+- **Color marks** - Supports `<mark>` and `<span>` for visual emphasis
+
+See **[Text Component Reference](./docs/text-component-reference.md)** for implementation guide.
+
+### Sanitization
+
+Sanitize content at the engine level (during data preparation), not in components:
+
+```javascript
+import { sanitizeHtml } from '@uniwebcms/semantic-parser/mappers/types';
+
+function prepareData(parsed) {
+  const hero = mappers.extractors.hero(parsed);
+  return {
+    ...hero,
+    title: sanitizeHtml(hero.title, {
+      allowedTags: ['strong', 'em', 'mark', 'span'],
+      allowedAttr: ['class', 'data-variant']
+    })
+  };
+}
+```
+
+The parser provides sanitization utilities but doesn't enforce their use. Your engine decides when to sanitize based on security requirements.
+
 ## Content Grouping
 
 The parser supports two grouping modes:
@@ -323,6 +372,7 @@ Inline formatting is preserved as HTML tags:
 - **[Content Writing Guide](./docs/guide.md)**: Learn how to structure content for optimal parsing
 - **[API Reference](./docs/api.md)**: Complete API documentation with all element types
 - **[Mapping Patterns Guide](./docs/mapping-patterns.md)**: Transform content to component-specific formats
+- **[Text Component Reference](./docs/text-component-reference.md)**: Reference implementation for rendering parsed content
 - **[File Structure](./docs/file-structure.md)**: Codebase organization
 
 ## Use Cases

@@ -692,6 +692,216 @@ function prepareComponentData(doc, schema) {
 }
 ```
 
+## Rendering Extracted Content
+
+After extracting content, you need to render it in your components. The parser works with content that may contain paragraph arrays, rich HTML, and formatting marks.
+
+### Text Component Pattern
+
+A **Text component** is recommended for rendering extracted content. See the [Text Component Reference](./text-component-reference.md) for a complete implementation guide.
+
+#### Why Use a Text Component?
+
+The parser's extractors return content in flexible formats:
+- **Arrays of paragraphs** - `["Para 1", "Para 2"]`
+- **Rich HTML** - `"Welcome to <strong>our platform</strong>"`
+- **Color marks** - `"Title with <mark class='brand'>highlight</mark>"`
+
+A Text component handles all these cases automatically.
+
+#### Quick Example
+
+```jsx
+import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { H1, P } from './components/Text'; // See docs/text-component-reference.md
+
+const parsed = parseContent(doc);
+const hero = mappers.extractors.hero(parsed);
+
+// Simple rendering
+<>
+  <H1 text={hero.title} />
+  {hero.subtitle && <H2 text={hero.subtitle} />}
+  <P text={hero.description} />
+</>
+```
+
+#### Handling Paragraph Arrays
+
+Extractors now return paragraph arrays to preserve structure:
+
+```jsx
+// hero.description is an array: ["First para", "Second para"]
+<P text={hero.description} />
+// Renders: <p>First para</p><p>Second para</p>
+
+// If you need a single string, use joinParagraphs
+import { joinParagraphs } from '@uniwebcms/semantic-parser/mappers/helpers';
+
+<P text={joinParagraphs(hero.description, '\n\n')} />
+// Renders: <p>First para\n\nSecond para</p>
+```
+
+#### Multi-line Headings
+
+```jsx
+// heading.title might be an array for multi-line titles
+<H1 text={heading.title} />
+
+// Example: ["Welcome to", "Our Platform"]
+// Renders: <h1><div>Welcome to</div><div>Our Platform</div></h1>
+```
+
+#### Complete Integration Example
+
+```jsx
+import { parseContent, mappers } from '@uniwebcms/semantic-parser';
+import { H1, H2, H3, P } from './components/Text';
+
+function HeroSection({ document }) {
+  // Parse and extract
+  const parsed = parseContent(document);
+  const hero = mappers.extractors.hero(parsed);
+
+  return (
+    <section className="hero">
+      {hero.kicker && <div className="kicker">{hero.kicker}</div>}
+      <H1 text={hero.title} className="hero-title" />
+      {hero.subtitle && <H2 text={hero.subtitle} className="hero-subtitle" />}
+      <P text={hero.description} className="hero-description" />
+      {hero.image && <img src={hero.image} alt={hero.imageAlt} />}
+      {hero.cta && (
+        <a href={hero.cta.href} className="cta-button">
+          {hero.cta.text}
+        </a>
+      )}
+    </section>
+  );
+}
+```
+
+#### Rendering Lists
+
+```jsx
+function FeaturesList({ document }) {
+  const parsed = parseContent(document);
+  const features = mappers.extractors.features(parsed);
+
+  return (
+    <div className="features-grid">
+      {features.map((feature, i) => (
+        <div key={i} className="feature-card">
+          {feature.icon && <img src={feature.icon} alt="" />}
+          <H3 text={feature.title} />
+          {feature.subtitle && <P text={feature.subtitle} className="subtitle" />}
+          <P text={feature.description} />
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Sanitization Strategy
+
+**Important:** Sanitize at the engine level, not in components.
+
+```javascript
+// ✅ Good - sanitize during data preparation
+import { sanitizeHtml } from '@uniwebcms/semantic-parser/mappers/types';
+
+function prepareHeroData(parsed) {
+  const hero = mappers.extractors.hero(parsed);
+
+  return {
+    ...hero,
+    title: sanitizeHtml(hero.title, {
+      allowedTags: ['strong', 'em', 'mark', 'span'],
+      allowedAttr: ['class', 'data-variant']
+    }),
+    description: hero.description.map(p => sanitizeHtml(p))
+  };
+}
+
+const safeHeroData = prepareHeroData(parsed);
+<H1 text={safeHeroData.title} />
+```
+
+```javascript
+// ❌ Avoid - sanitizing in component on every render
+function Hero({ data }) {
+  const safeTitle = sanitizeHtml(data.title); // Runs every render!
+  return <H1 text={safeTitle} />;
+}
+```
+
+#### When to Sanitize
+
+- **Always**: External content, user-generated content
+- **Optional**: Trusted TipTap editor with locked schema
+- **Never needed**: Hard-coded content in your app
+
+See [Text Component Reference - Sanitization](./text-component-reference.md#sanitization-tools) for detailed guidance.
+
+### Helper Functions for Rendering
+
+```javascript
+import {
+  joinParagraphs,
+  excerptFromParagraphs,
+  countWords
+} from '@uniwebcms/semantic-parser/mappers/helpers';
+
+// Join paragraphs for single-string display
+const singlePara = joinParagraphs(hero.description, ' ');
+
+// Create excerpt for preview
+const excerpt = excerptFromParagraphs(article.content, {
+  maxLength: 150
+});
+
+// Count words for reading time estimate
+const wordCount = countWords(article.content);
+const readingTime = Math.ceil(wordCount / 200); // ~200 words/min
+```
+
+### Color Marks in Headings
+
+The parser supports color marks for visual emphasis:
+
+```jsx
+// Content with color mark
+const title = "Welcome to <mark class='brand'>Our Platform</mark>";
+
+<H1 text={title} />
+```
+
+**CSS for Color Marks:**
+
+```css
+mark.brand {
+  background: linear-gradient(
+    120deg,
+    var(--brand-color) 0%,
+    var(--brand-color) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 40%;
+  background-position: 0 85%;
+  color: inherit;
+  padding: 0;
+}
+```
+
+**Ensure sanitization allows marks:**
+
+```javascript
+sanitizeHtml(content, {
+  allowedTags: ['strong', 'em', 'mark', 'span'],
+  allowedAttr: ['class', 'data-variant']
+});
+```
+
 ## Best Practices
 
 1. **Start with extractors**: Use pre-built patterns when they match your needs
@@ -701,6 +911,9 @@ function prepareComponentData(doc, schema) {
 5. **Safe extraction**: Use `helpers.safe()` when accessing uncertain paths
 6. **Validate**: Use `validateRequired()` for critical fields
 7. **Type safety**: Consider adding TypeScript definitions for your schemas
+8. **Sanitize at engine level**: Sanitize once during data preparation, not in components
+9. **Preserve arrays**: Keep paragraph arrays when possible for better rendering control
+10. **Use Text component**: Adopt the reference Text component for consistent rendering
 
 ## Contributing Patterns
 
