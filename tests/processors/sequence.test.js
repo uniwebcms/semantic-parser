@@ -23,6 +23,7 @@ describe("processSequence", () => {
       type: "heading",
       level: 1,
       content: "Title",
+      attrs: { level: 1 }
     });
     expect(result[1]).toEqual({
       type: "paragraph",

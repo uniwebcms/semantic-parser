@@ -1,9 +1,10 @@
 /**
  * Transform a sequence into content groups with semantic structure
  * @param {Array} sequence Flat sequence of elements
+ * @param {Object} options Parsing options
  * @returns {Object} Content organized into groups with identified main content
  */
-function processGroups(sequence) {
+function processGroups(sequence, options = {}) {
     const result = {
         main: null,
         items: [],
@@ -19,10 +20,10 @@ function processGroups(sequence) {
     result.metadata.dividerMode = sequence.some((el) => el.type === 'divider');
 
     // Split sequence into raw groups
-    const groups = result.metadata.dividerMode ? splitByDividers(sequence) : splitByHeadings(sequence);
+    const groups = result.metadata.dividerMode ? splitByDividers(sequence) : splitByHeadings(sequence, options);
 
     // Process each group's structure
-    const processedGroups = groups.map(processGroupContent);
+    const processedGroups = groups.map(group => processGroupContent(group, options));
 
     // Special handling for first group in divider mode
     if (result.metadata.dividerMode && groups.startsWithDivider) {
@@ -77,7 +78,7 @@ function splitByDividers(sequence) {
 /**
  * Split sequence into groups using heading patterns
  */
-function splitByHeadings(sequence) {
+function splitByHeadings(sequence, options = {}) {
     const groups = [];
     let currentGroup = [];
     let isPreOpened = false;
@@ -102,7 +103,7 @@ function splitByHeadings(sequence) {
 
         // Handle special pretitle case before consuming all consecutive
         // headings with increasing levels
-        if (isPreTitle(sequence, i)) {
+        if (isPreTitle(sequence, i, options)) {
             startGroup(true); // pre open a new group
             currentGroup.push(sequence[i]);
             i++; // move to known next element (it will be a heading)
@@ -130,10 +131,18 @@ function splitByHeadings(sequence) {
 }
 
 /**
- * Check if this is a pretitle (eg, H3 followed by H1/H2)
+ * Check if this is a pretitle (eg, H3 followed by H1/H2, or H2 followed by H1)
  */
-function isPreTitle(sequence, i) {
-    return i + 1 < sequence.length && sequence[i].type === 'heading' && sequence[i + 1].type === 'heading' && sequence[i].level > sequence[i + 1].level;
+function isPreTitle(sequence, i, options = {}) {
+    const { pretitleLevel = 3 } = options;
+
+    return (
+        i + 1 < sequence.length &&
+        sequence[i].type === 'heading' &&
+        sequence[i + 1].type === 'heading' &&
+        sequence[i].level === pretitleLevel &&
+        sequence[i + 1].level < pretitleLevel
+    );
 }
 
 function isBannerImage(sequence, i) {
@@ -159,11 +168,15 @@ function readHeadingGroup(sequence, i) {
 /**
  * Process a group's content to identify its structure
  */
-function processGroupContent(elements) {
+function processGroupContent(elements, options = {}) {
+    const { extractBodyHeadings = false } = options;
+
     const header = {
         pretitle: '',
         title: '',
-        subtitle: ''
+        subtitle: '',
+        subtitle2: '',
+        alignment: null
     };
     let banner = null;
     const body = {
@@ -174,10 +187,13 @@ function processGroupContent(elements) {
         links: [],
         lists: [],
         buttons: [],
-        properties: [],
+        properties: {},
         propertyBlocks: [],
-        cards: [], // not supported yet
-        headings: [] // used in lists
+        cards: [],
+        documents: [],
+        forms: [],
+        quotes: [],
+        headings: []
     };
 
     const metadata = {
@@ -185,8 +201,10 @@ function processGroupContent(elements) {
         contentTypes: new Set()
     };
 
+    let inBody = false;  // Track when we've finished header section
+
     for (let i = 0; i < elements.length; i++) {
-        if (isPreTitle(elements, i)) {
+        if (isPreTitle(elements, i, options)) {
             header.pretitle = elements[i].content;
             i++; // move to known next heading (H1 or h2)
         }
@@ -205,18 +223,36 @@ function processGroupContent(elements) {
         if (element.type === 'heading') {
             metadata.level ??= element.level;
 
+            // Extract alignment from first heading
+            if (!header.alignment && element.attrs?.textAlign) {
+                header.alignment = element.attrs.textAlign;
+            }
+
+            // Assign to header fields
             if (!header.title) {
                 header.title = element.content;
             } else if (!header.subtitle) {
                 header.subtitle = element.content;
+            } else if (!header.subtitle2) {
+                header.subtitle2 = element.content;
+            } else {
+                // After subtitle2, we're in body - collect heading
+                inBody = true;
+                if (extractBodyHeadings) {
+                    body.headings.push(element.content);
+                }
             }
         } else if (element.type === 'list') {
+            inBody = true;
             body.lists.push(processListContent(element));
         } else {
+            inBody = true;
+
             switch (element.type) {
                 case 'paragraph':
                     body.paragraphs.push(element.content);
                     break;
+
                 case 'image':
                     body.imgs.push({
                         url: element.src,
@@ -224,18 +260,31 @@ function processGroupContent(elements) {
                         alt: element.alt
                     });
                     break;
+
                 case 'link':
                     body.links.push({
                         href: element.content.href,
                         label: element.content.label
                     });
                     break;
+
+                case 'styledLink':
+                    // Styled link (multi-part with same href)
+                    body.links.push({
+                        href: element.href,
+                        label: element.content,
+                        target: element.target
+                    });
+                    break;
+
                 case 'icon':
                     body.icons.push(element.svg);
                     break;
+
                 case 'button':
                     body.buttons.push(element);
                     break;
+
                 case 'video':
                     body.videos.push({
                         src: element.src,
@@ -243,9 +292,31 @@ function processGroupContent(elements) {
                         alt: element.alt
                     });
                     break;
+
+                case 'blockquote':
+                    // Process blockquote content recursively
+                    const quoteContent = processGroupContent(element.content, options);
+                    body.quotes.push(quoteContent.body);
+                    break;
+
                 case 'codeBlock':
-                    body.properties = element.content;
-                    body.propertyBlocks.push(element.content);
+                    // Use parsed JSON if available, otherwise use text content
+                    const codeData = element.parsed !== null ? element.parsed : element.content;
+                    body.properties = codeData;  // Last one
+                    body.propertyBlocks.push(codeData);  // All of them
+                    break;
+
+                case 'card-group':
+                    body.cards.push(...element.cards);
+                    break;
+
+                case 'document-group':
+                    body.documents.push(...element.documents);
+                    break;
+
+                case 'form':
+                    body.forms.push(element.data || element.attrs);
+                    break;
             }
         }
     }

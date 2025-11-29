@@ -287,6 +287,70 @@ function gallery(parsed, options = {}) {
     }));
 }
 
+/**
+ * Extract content in legacy Article class format
+ * Used for backward compatibility with existing components
+ *
+ * This extractor transforms the new parser output into the exact format
+ * used by the legacy Article class, enabling drop-in replacement without
+ * breaking existing components.
+ *
+ * @param {Object} parsed - Parsed content from parseContent()
+ * @returns {Object} Legacy format { main, items }
+ *
+ * @example
+ * const { parseContent, mappers } = require('@uniwebcms/semantic-parser');
+ * const parsed = parseContent(doc, { pretitleLevel: 2, parseCodeAsJson: true });
+ * const legacy = mappers.extractors.legacy(parsed);
+ * // Returns: { main: {...}, items: [...] }
+ */
+function legacy(parsed) {
+    const groups = parsed.groups || {};
+
+    const transformGroup = (group) => {
+        if (!group) return null;
+
+        return {
+            header: {
+                title: group.header?.title || '',
+                subtitle: group.header?.subtitle || '',
+                subtitle2: group.header?.subtitle2 || '',
+                pretitle: group.header?.pretitle || '',
+                // Auto-fill description (legacy behavior)
+                description: group.header?.subtitle2 || first(group.body?.paragraphs) || '',
+                alignment: group.header?.alignment || ''
+            },
+            banner: group.banner ? {
+                url: group.banner.url,
+                alt: group.banner.alt,
+                caption: group.banner.caption
+            } : null,
+            body: {
+                paragraphs: group.body?.paragraphs || [],
+                headings: group.body?.headings || [],
+                imgs: group.body?.imgs || [],
+                videos: group.body?.videos || [],
+                lists: group.body?.lists || [],
+                links: group.body?.links || [],
+                icons: group.body?.icons || [],
+                buttons: group.body?.buttons || [],
+                cards: group.body?.cards || [],
+                documents: group.body?.documents || [],
+                forms: group.body?.forms || [],
+                form: first(group.body?.forms) || null,
+                quotes: group.body?.quotes || [],
+                properties: group.body?.properties || {},
+                propertyBlocks: group.body?.propertyBlocks || []
+            }
+        };
+    };
+
+    return {
+        main: transformGroup(groups.main),
+        items: (groups.items || []).map(transformGroup)
+    };
+}
+
 module.exports = {
     hero,
     card,
@@ -298,5 +362,6 @@ module.exports = {
     faq,
     pricing,
     team,
-    gallery
+    gallery,
+    legacy
 };
