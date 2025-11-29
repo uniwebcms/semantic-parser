@@ -89,9 +89,6 @@ const Text = ({ text, as = 'p', className, lineAs }) => {
   const Tag = as;
   const isHeading = as === 'h1' || as === 'h2' || as === 'h3' || as === 'h4' || as === 'h5' || as === 'h6';
 
-  // Filter out empty content
-  const filterEmpty = (arr) => arr.filter(item => item && item.trim() !== '');
-
   // Single string
   if (!isArray) {
     if (!text || text.trim() === '') return null;
@@ -103,9 +100,11 @@ const Text = ({ text, as = 'p', className, lineAs }) => {
     );
   }
 
-  // Array of strings
-  const filtered = filterEmpty(text);
-  if (filtered.length === 0) return null;
+  // Array of strings - filter empty content
+  const filteredText = text.filter(
+    (item) => typeof item === 'string' && item.trim() !== ''
+  );
+  if (filteredText.length === 0) return null;
 
   const LineTag = lineAs || (isHeading ? 'div' : 'p');
 
@@ -113,7 +112,7 @@ const Text = ({ text, as = 'p', className, lineAs }) => {
   if (isHeading) {
     return (
       <Tag className={className}>
-        {filtered.map((line, i) => (
+        {filteredText.map((line, i) => (
           <LineTag
             key={i}
             dangerouslySetInnerHTML={{ __html: line }}
@@ -126,7 +125,7 @@ const Text = ({ text, as = 'p', className, lineAs }) => {
   // Non-headings: render each line as separate element
   return (
     <>
-      {filtered.map((line, i) => (
+      {filteredText.map((line, i) => (
         <LineTag
           key={i}
           className={className}
@@ -135,9 +134,7 @@ const Text = ({ text, as = 'p', className, lineAs }) => {
       ))}
     </>
   );
-});
-
-Text.displayName = 'Text';
+};
 
 export default Text;
 ```

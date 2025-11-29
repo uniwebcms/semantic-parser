@@ -47,17 +47,6 @@ function Text({ text, as = 'p', html = true, className, lineAs }) {
   const Tag = as;
   const isHeading = as === 'h1' || as === 'h2' || as === 'h3' || as === 'h4' || as === 'h5' || as === 'h6';
 
-  /**
-   * Filter out empty or whitespace-only strings
-   * @param {string[]} contentArray - Array to filter
-   * @returns {string[]} Filtered array
-   */
-  const filterEmptyContent = (contentArray) => {
-    return contentArray.filter(
-      (item) => typeof item === 'string' && item.trim() !== ''
-    );
-  };
-
   // Single string input
   if (!isArray) {
     if (!text || text.trim() === '') return null;
@@ -74,19 +63,16 @@ function Text({ text, as = 'p', html = true, className, lineAs }) {
   }
 
   // Array input - filter empty content first
-  const filteredText = filterEmptyContent(text);
+  const filteredText = text.filter(
+    (item) => typeof item === 'string' && item.trim() !== ''
+  );
 
   if (filteredText.length === 0) {
     return null; // Don't render anything for empty arrays
   }
 
   // Determine the line wrapper tag with smart defaults
-  const getLineTag = () => {
-    if (lineAs) return lineAs;
-    return isHeading ? 'div' : 'p';
-  };
-
-  const LineTag = getLineTag();
+  const LineTag = lineAs || (isHeading ? 'div' : 'p');
 
   // Multi-line heading: wrap all lines in a single heading tag
   if (isHeading) {
