@@ -100,11 +100,11 @@ export default class Article {
     constructor(data, options) {
         // ... template system (kept as-is) ...
 
-        // NEW: Use semantic-parser instead of legacy parse()
-        this.parsed = this.parseWithNewParser(this.elements);
+        // NEW: Use semantic-parser for parsing
+        this.parsed = this.parse(this.elements);
     }
 
-    parseWithNewParser(elements) {
+    parse(elements) {
         const doc = { type: 'doc', content: elements.flat() };
 
         const parsed = parseContent(doc, {

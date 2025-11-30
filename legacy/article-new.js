@@ -90,14 +90,14 @@ export default class Article {
 
                     this.elements = Article.splitItems(parsedData?.['content'] || []);
 
-                    this.parsed = this.parseWithNewParser(this.elements);
+                    this.parsed = this.parse(this.elements);
                 } else {
                     const parsedData = this.instantiateData(data);
                     this.content = parsedData;
 
                     this.elements = Article.splitItems(parsedData?.['content'] || []);
 
-                    this.parsed = this.parseWithNewParser(this.elements);
+                    this.parsed = this.parse(this.elements);
                 }
             }
         } else {
@@ -108,7 +108,7 @@ export default class Article {
 
             this.elements = Article.splitItems(parsedData?.['content'] || []);
 
-            this.parsed = this.parseWithNewParser(this.elements);
+            this.parsed = this.parse(this.elements);
         }
     }
 
@@ -165,7 +165,7 @@ export default class Article {
 
             this.elements = [parsedPrimary, ...items];
 
-            this.parsed = this.parseWithNewParser(this.elements);
+            this.parsed = this.parse(this.elements);
 
             this.autoItems = true;
 
@@ -176,12 +176,12 @@ export default class Article {
     }
 
     /**
-     * Parse elements using the new semantic-parser library
+     * Parse elements using the semantic-parser library
      *
-     * This replaces the legacy parse() method with a call to the semantic-parser,
-     * using the legacy extractor to maintain output format compatibility.
+     * This method uses the @uniwebcms/semantic-parser library internally
+     * while maintaining the exact same output format as the legacy implementation.
      */
-    parseWithNewParser(elements) {
+    parse(elements) {
         // Flatten elements into a single document
         const doc = {
             type: 'doc',
