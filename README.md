@@ -351,6 +351,14 @@ Groups are created based on heading patterns. A new group starts when:
 - Multiple H1s appear (no main content created)
 - The heading level indicates a new section
 
+**Pretitle Detection:** Any heading followed by a more important heading is automatically detected as a pretitle:
+- H3 before H1 → pretitle ✅
+- H2 before H1 → pretitle ✅
+- H6 before H5 → pretitle ✅
+- H4 before H2 → pretitle ✅
+
+No configuration needed - it just works naturally!
+
 ### Divider-Based Grouping
 
 When any horizontal rule (`---`) is present, the entire document uses divider-based grouping. Groups are split explicitly by dividers.

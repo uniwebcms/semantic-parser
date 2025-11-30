@@ -23,7 +23,7 @@ function processGroups(sequence, options = {}) {
     const groups = result.metadata.dividerMode ? splitByDividers(sequence) : splitByHeadings(sequence, options);
 
     // Process each group's structure
-    const processedGroups = groups.map(group => processGroupContent(group, options));
+    const processedGroups = groups.map(group => processGroupContent(group));
 
     // Special handling for first group in divider mode
     if (result.metadata.dividerMode && groups.startsWithDivider) {
@@ -103,7 +103,7 @@ function splitByHeadings(sequence, options = {}) {
 
         // Handle special pretitle case before consuming all consecutive
         // headings with increasing levels
-        if (isPreTitle(sequence, i, options)) {
+        if (isPreTitle(sequence, i)) {
             startGroup(true); // pre open a new group
             currentGroup.push(sequence[i]);
             i++; // move to known next element (it will be a heading)
@@ -131,17 +131,15 @@ function splitByHeadings(sequence, options = {}) {
 }
 
 /**
- * Check if this is a pretitle (eg, H3 followed by H1/H2, or H2 followed by H1)
+ * Check if this is a pretitle - any heading followed by a more important heading
+ * (e.g., H3→H1, H2→H1, H6→H5, etc.)
  */
-function isPreTitle(sequence, i, options = {}) {
-    const { pretitleLevel = 3 } = options;
-
+function isPreTitle(sequence, i) {
     return (
         i + 1 < sequence.length &&
         sequence[i].type === 'heading' &&
         sequence[i + 1].type === 'heading' &&
-        sequence[i].level === pretitleLevel &&
-        sequence[i + 1].level < pretitleLevel
+        sequence[i].level > sequence[i + 1].level  // Smaller heading before larger
     );
 }
 
@@ -168,8 +166,7 @@ function readHeadingGroup(sequence, i) {
 /**
  * Process a group's content to identify its structure
  */
-function processGroupContent(elements, options = {}) {
-    const { extractBodyHeadings = false } = options;
+function processGroupContent(elements) {
 
     const header = {
         pretitle: '',
@@ -204,7 +201,7 @@ function processGroupContent(elements, options = {}) {
     let inBody = false;  // Track when we've finished header section
 
     for (let i = 0; i < elements.length; i++) {
-        if (isPreTitle(elements, i, options)) {
+        if (isPreTitle(elements, i)) {
             header.pretitle = elements[i].content;
             i++; // move to known next heading (H1 or h2)
         }
@@ -238,9 +235,7 @@ function processGroupContent(elements, options = {}) {
             } else {
                 // After subtitle2, we're in body - collect heading
                 inBody = true;
-                if (extractBodyHeadings) {
-                    body.headings.push(element.content);
-                }
+                body.headings.push(element.content);
             }
         } else if (element.type === 'list') {
             inBody = true;

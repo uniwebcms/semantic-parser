@@ -11,389 +11,393 @@
  * - ~80% code reduction while preserving all functionality
  */
 
-import { parseContent } from '../src/index.js';
-import { extractors } from '../src/mappers/index.js';
-import Profile from './profile.js';
+import { parseContent } from "../src/index.js";
+import { extractors } from "../src/mappers/index.js";
+import Profile from "./profile.js";
 
 export default class Article {
-    constructor(data, options) {
-        data ??= {};
+  constructor(data, options) {
+    data ??= {};
 
-        this.options = options;
+    this.options = options;
 
-        const input = options.input || {};
+    const input = options.input || {};
 
-        this.profile = options.mainProfile;
-        this.secondaryProfile = input.profiles?.[0] || null;
-        this.profiles = input.profiles;
-        this.section = input.section;
-        this.field = input.field;
+    this.profile = options.mainProfile;
+    this.secondaryProfile = input.profiles?.[0] || null;
+    this.profiles = input.profiles;
+    this.section = input.section;
+    this.field = input.field;
 
-        this.format = input.format || {};
+    this.format = input.format || {};
 
-        const { website } = options;
+    const { website } = options;
 
-        const { manual, global, report } = this.format;
+    const { manual, global, report } = this.format;
 
-        this.items = null;
+    this.items = null;
 
-        this.processor = website.getTemplateEngine();
+    this.processor = website.getTemplateEngine();
 
-        if (report) {
-            let { select, filter } = report;
+    if (report) {
+      let { select, filter } = report;
 
-            if (select) {
-                this.items = this.getSectionItems(select);
+      if (select) {
+        this.items = this.getSectionItems(select);
 
-                this.section = select;
+        this.section = select;
 
-                if (filter && Array.isArray(this.items)) {
-                    // replace variables in filter with global variables in outputParams
-                    const globalVars = website.outputParams || {};
-                    const regexp = /__([^_][^]*?)__/g;
-                    if (regexp.test(filter)) {
-                        filter = filter.replace(regexp, (_, key) => {
-                            if (
-                                key in globalVars &&
-                                globalVars[key] !== null &&
-                                globalVars[key] !== undefined
-                            ) {
-                                return `"${globalVars[key]}"`;
-                            }
-                            return 'undefined';
-                        });
-                    }
+        if (filter && Array.isArray(this.items)) {
+          // replace variables in filter with global variables in outputParams
+          const globalVars = website.outputParams || {};
+          const regexp = /__([^_][^]*?)__/g;
+          if (regexp.test(filter)) {
+            filter = filter.replace(regexp, (_, key) => {
+              if (
+                key in globalVars &&
+                globalVars[key] !== null &&
+                globalVars[key] !== undefined
+              ) {
+                return `"${globalVars[key]}"`;
+              }
+              return "undefined";
+            });
+          }
 
-                    this.items = this.items.filter((item) =>
-                        this.processor.evaluateText(filter, (key) => item[key])
-                    );
-                }
-            }
+          this.items = this.items.filter((item) =>
+            this.processor.evaluateText(filter, (key) => item[key])
+          );
         }
+      }
+    }
 
-        if (manual) {
-            if (!this.parseWithAutoItems(data)) {
-                if (this.items) {
-                    let parsedData = null;
+    if (manual) {
+      if (!this.parseWithAutoItems(data)) {
+        if (this.items) {
+          let parsedData = null;
 
-                    //Single Item Section
-                    if (!Array.isArray(this.items)) {
-                        parsedData = this.instantiateContent(data, this.items);
-                    } else {
-                        parsedData = this.instantiateContent(data, {
-                            _items: this.items,
-                            _count: this.items.length,
-                        });
-                    }
+          //Single Item Section
+          if (!Array.isArray(this.items)) {
+            parsedData = this.instantiateContent(data, this.items);
+          } else {
+            parsedData = this.instantiateContent(data, {
+              _items: this.items,
+              _count: this.items.length,
+            });
+          }
 
-                    this.content = parsedData;
+          this.content = parsedData;
 
-                    this.elements = Article.splitItems(parsedData?.['content'] || []);
+          this.elements = Article.splitItems(parsedData?.["content"] || []);
 
-                    this.parsed = this.parse(this.elements);
-                } else {
-                    const parsedData = this.instantiateData(data);
-                    this.content = parsedData;
-
-                    this.elements = Article.splitItems(parsedData?.['content'] || []);
-
-                    this.parsed = this.parse(this.elements);
-                }
-            }
+          this.parsed = this.parse(this.elements);
         } else {
-            //If there is report settings, we need to somehow manipulate the data
-            // with given report settings
-            const parsedData = global ? this.instantiateData(data) : data;
-            this.content = parsedData;
+          const parsedData = this.instantiateData(data);
+          this.content = parsedData;
 
-            this.elements = Article.splitItems(parsedData?.['content'] || []);
+          this.elements = Article.splitItems(parsedData?.["content"] || []);
 
-            this.parsed = this.parse(this.elements);
+          this.parsed = this.parse(this.elements);
         }
+      }
+    } else {
+      //If there is report settings, we need to somehow manipulate the data
+      // with given report settings
+      const parsedData = global ? this.instantiateData(data) : data;
+      this.content = parsedData;
+
+      this.elements = Article.splitItems(parsedData?.["content"] || []);
+
+      this.parsed = this.parse(this.elements);
     }
+  }
 
-    parseWithAutoItems(data) {
-        const elements = Article.splitItems(data?.['content'] || []);
+  parseWithAutoItems(data) {
+    const elements = Article.splitItems(data?.["content"] || []);
 
-        if (elements.length === 2) {
-            const [primary, secondary] = elements;
+    if (elements.length === 2) {
+      const [primary, secondary] = elements;
 
-            let parsedPrimary = this.instantiateContent(primary);
-            let items = [];
+      let parsedPrimary = this.instantiateContent(primary);
+      let items = [];
 
-            if (this.items) {
-                if (!Array.isArray(this.items)) {
-                    this.items = [this.items];
-                }
-
-                items = this.items.map((item, i) => {
-                    return this.instantiateContent(secondary, {
-                        ...item,
-                        _items: this.items,
-                        _item: item,
-                        _index: i,
-                        _count: this.items.length,
-                    });
-                });
-            } else if (this.profiles.length) {
-                if (this.section) {
-                    //build items from section items
-
-                    let section = this.section;
-
-                    //clean section to get items from the section
-                    this.section = '';
-                    items = this.getSectionItems(`*${section}`) || [];
-
-                    if (items.length) {
-                        items = items.map((item) => {
-                            return this.instantiateContent(secondary, item);
-                        });
-                    }
-                } else {
-                    //build items from profiles
-                    items = this.profiles.map((profile) => {
-                        return this.instantiateContent(secondary, profile);
-                    });
-                }
-            }
-
-            this.content = {
-                type: 'doc',
-                content: [...parsedPrimary, ...items.flat()],
-            };
-
-            this.elements = [parsedPrimary, ...items];
-
-            this.parsed = this.parse(this.elements);
-
-            this.autoItems = true;
-
-            return true;
+      if (this.items) {
+        if (!Array.isArray(this.items)) {
+          this.items = [this.items];
         }
 
-        return false;
-    }
-
-    /**
-     * Parse elements using the semantic-parser library
-     *
-     * This method uses the @uniwebcms/semantic-parser library internally
-     * while maintaining the exact same output format as the legacy implementation.
-     */
-    parse(elements) {
-        // Flatten elements into a single document
-        const doc = {
-            type: 'doc',
-            content: elements.flat()
-        };
-
-        // Parse with legacy-compatible options
-        const parsed = parseContent(doc, {
-            pretitleLevel: 2,         // H2 before H1 (legacy behavior)
-            parseCodeAsJson: true,    // Properties feature
-            extractBodyHeadings: true // Body headings extraction
+        items = this.items.map((item, i) => {
+          return this.instantiateContent(secondary, {
+            ...item,
+            _items: this.items,
+            _item: item,
+            _index: i,
+            _count: this.items.length,
+          });
         });
+      } else if (this.profiles.length) {
+        if (this.section) {
+          //build items from section items
 
-        // Transform to legacy format
-        return extractors.legacy(parsed);
-    }
+          let section = this.section;
 
-    ///////////////////////////////////////////////////////////////////////////
-    // STATIC METHODS (kept from legacy for divider splitting)
+          //clean section to get items from the section
+          this.section = "";
+          items = this.getSectionItems(`*${section}`) || [];
 
-    static isEmptyItem(ele) {
-        for (let i = 0; i < ele.length; i++) {
-            let item = ele[i];
-
-            const { type, content = [] } = item;
-
-            if (type !== 'paragraph' || content.length) return false;
+          if (items.length) {
+            items = items.map((item) => {
+              return this.instantiateContent(secondary, item);
+            });
+          }
+        } else {
+          //build items from profiles
+          items = this.profiles.map((profile) => {
+            return this.instantiateContent(secondary, profile);
+          });
         }
+      }
 
-        return true;
+      this.content = {
+        type: "doc",
+        content: [...parsedPrimary, ...items.flat()],
+      };
+
+      this.elements = [parsedPrimary, ...items];
+
+      this.parsed = this.parse(this.elements);
+
+      this.autoItems = true;
+
+      return true;
     }
 
-    static splitItems(doc) {
-        const elements = [];
+    return false;
+  }
 
-        let ele = [];
-        doc.forEach((item) => {
-            const { type } = item;
+  /**
+   * Parse elements using the semantic-parser library
+   *
+   * This method uses the @uniwebcms/semantic-parser library internally
+   * while maintaining the exact same output format as the legacy implementation.
+   */
+  parse(elements) {
+    // Flatten elements into a single document
+    const doc = {
+      type: "doc",
+      content: elements.flat(),
+    };
 
-            if (type === 'DividerBlock') {
-                if (ele.length) {
-                    elements.push([...ele]);
-                } else {
-                    elements.push([]);
-                }
+    // Parse with legacy-compatible options
+    const parsed = parseContent(doc, {
+      parseCodeAsJson: true, // Properties feature (legacy)
+    });
 
-                ele = [];
-            } else {
-                ele.push(item);
-            }
-        });
+    // Transform to legacy format
+    return extractors.legacy(parsed);
+  }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // STATIC METHODS (kept from legacy for divider splitting)
+
+  static isEmptyItem(ele) {
+    for (let i = 0; i < ele.length; i++) {
+      let item = ele[i];
+
+      const { type, content = [] } = item;
+
+      if (type !== "paragraph" || content.length) return false;
+    }
+
+    return true;
+  }
+
+  static splitItems(doc) {
+    const elements = [];
+
+    let ele = [];
+    doc.forEach((item) => {
+      const { type } = item;
+
+      if (type === "DividerBlock") {
         if (ele.length) {
-            elements.push([...ele]);
-        }
-
-        if (!elements.length) return [doc];
-
-        return elements.filter((item, i) => {
-            if (!i) return !this.isEmptyItem(item);
-
-            return true;
-        });
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // TEMPLATE SYSTEM METHODS (kept as-is from legacy)
-
-    instantiateData(data) {
-        if (!this.profile && !this.secondaryProfile) return data;
-
-        return this.instantiateContent(data);
-    }
-
-    instantiateContent(content, givenProfile = null) {
-        if (!this.profile && !this.secondaryProfile) return content;
-
-        if (!Array.isArray(content)) content = [content];
-
-        return content.map((item) => this.processNode(item, givenProfile));
-    }
-
-    processNode(node, givenProfile = null) {
-        if (!node || typeof node !== 'object') return node;
-
-        const processed = { ...node };
-
-        if (processed.content) {
-            processed.content = Array.isArray(processed.content)
-                ? processed.content.map((child) => this.processNode(child, givenProfile))
-                : this.processNode(processed.content, givenProfile);
-        }
-
-        if (processed.type === 'text' && processed.text) {
-            processed.text = this.processor.render(processed.text, (key) =>
-                this.getVariable(key, givenProfile)
-            );
-        }
-
-        return processed;
-    }
-
-    getVariable(key, profile) {
-        // Check if the key starts with '@', indicating that the label should be returned
-        const isLabel = key.startsWith('@');
-
-        // Remove the '@' modifier from the key to get the actual variable name
-        let varName = isLabel ? key.slice(1) || '' : key;
-
-        // Check if the variable name starts with '$', indicating that it is of "root" type
-        const isRoot = varName.startsWith('$'); // $ is global
-        varName = isRoot ? varName.slice(1) || '' : varName;
-
-        let profileEntity = isRoot ? this.profile : this.secondaryProfile;
-
-        const fromOtherSection = varName.startsWith('/');
-        if (fromOtherSection) {
-            varName = varName.slice(1);
-
-            let parsedVar = varName.replace(/\./g, '/');
-
-            if (isLabel) {
-                return this.profile.getMetaInfo(parsedVar) || parsedVar;
-            } else {
-                if (parsedVar.includes('/')) {
-                    let path = parsedVar.split('/');
-
-                    if (path.length > 2) {
-                        let last = path.pop();
-
-                        let prefix = path.join('/');
-                        let data = profileEntity.getValue(prefix);
-
-                        if (!Profile.isPlainObject(data) && !Array.isArray(data)) return null;
-
-                        return Array.isArray(data) ? data.map((item) => item[last]) : data[last];
-                    } else return profileEntity.getValue(parsedVar);
-                } else {
-                    return profileEntity.getValue(parsedVar);
-                }
-            }
+          elements.push([...ele]);
         } else {
-            // If not given, determine the profile based on the "root" type
-            if (!profile) {
-                profile = profileEntity;
-            }
-
-            let parsedVar = varName.replace(/\./g, '/');
-
-            // Build the pending variable using the variable name and type
-            const pendingVar = this.buildPendingVariable(parsedVar, isRoot);
-
-            // If the profile is an object or null, we can finish early
-            if (!(profile instanceof Profile)) {
-                if (isLabel) {
-                    let tgtProfile = isRoot ? this.profile : this.secondaryProfile;
-
-                    return tgtProfile?.getMetaInfo(pendingVar) || pendingVar;
-                } else {
-                    if (parsedVar.includes('/')) {
-                        let data = profile;
-                        let path = parsedVar.split('/');
-
-                        for (let name of path) {
-                            if (!Profile.isPlainObject(data) && !Array.isArray(data)) return null;
-
-                            data = Array.isArray(data)
-                                ? data.map((item) => item[name])
-                                : data[name];
-                        }
-
-                        return data;
-                    } else {
-                        return profile[varName];
-                    }
-                }
-            }
-
-            // Return the label if '@' modifier is present, otherwise return the value
-            return isLabel
-                ? profile.getMetaInfo(pendingVar) || pendingVar
-                : profile.getValue(pendingVar);
+          elements.push([]);
         }
+
+        ele = [];
+      } else {
+        ele.push(item);
+      }
+    });
+
+    if (ele.length) {
+      elements.push([...ele]);
     }
 
-    getSectionItems(text) {
-        const isMultipleProfiles = text.startsWith('*');
+    if (!elements.length) return [doc];
 
-        text = isMultipleProfiles ? text.slice(1) : text;
+    return elements.filter((item, i) => {
+      if (!i) return !this.isEmptyItem(item);
 
-        const vars = (key) => {
-            if (isMultipleProfiles) {
-                return this.profiles
-                    .map((profile) => {
-                        return this.getVariable(key, profile);
-                    })
-                    .flat();
-            } else {
-                return this.getVariable(key);
+      return true;
+    });
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // TEMPLATE SYSTEM METHODS (kept as-is from legacy)
+
+  instantiateData(data) {
+    if (!this.profile && !this.secondaryProfile) return data;
+
+    return this.instantiateContent(data);
+  }
+
+  instantiateContent(content, givenProfile = null) {
+    if (!this.profile && !this.secondaryProfile) return content;
+
+    if (!Array.isArray(content)) content = [content];
+
+    return content.map((item) => this.processNode(item, givenProfile));
+  }
+
+  processNode(node, givenProfile = null) {
+    if (!node || typeof node !== "object") return node;
+
+    const processed = { ...node };
+
+    if (processed.content) {
+      processed.content = Array.isArray(processed.content)
+        ? processed.content.map((child) =>
+            this.processNode(child, givenProfile)
+          )
+        : this.processNode(processed.content, givenProfile);
+    }
+
+    if (processed.type === "text" && processed.text) {
+      processed.text = this.processor.render(processed.text, (key) =>
+        this.getVariable(key, givenProfile)
+      );
+    }
+
+    return processed;
+  }
+
+  getVariable(key, profile) {
+    // Check if the key starts with '@', indicating that the label should be returned
+    const isLabel = key.startsWith("@");
+
+    // Remove the '@' modifier from the key to get the actual variable name
+    let varName = isLabel ? key.slice(1) || "" : key;
+
+    // Check if the variable name starts with '$', indicating that it is of "root" type
+    const isRoot = varName.startsWith("$"); // $ is global
+    varName = isRoot ? varName.slice(1) || "" : varName;
+
+    let profileEntity = isRoot ? this.profile : this.secondaryProfile;
+
+    const fromOtherSection = varName.startsWith("/");
+    if (fromOtherSection) {
+      varName = varName.slice(1);
+
+      let parsedVar = varName.replace(/\./g, "/");
+
+      if (isLabel) {
+        return this.profile.getMetaInfo(parsedVar) || parsedVar;
+      } else {
+        if (parsedVar.includes("/")) {
+          let path = parsedVar.split("/");
+
+          if (path.length > 2) {
+            let last = path.pop();
+
+            let prefix = path.join("/");
+            let data = profileEntity.getValue(prefix);
+
+            if (!Profile.isPlainObject(data) && !Array.isArray(data))
+              return null;
+
+            return Array.isArray(data)
+              ? data.map((item) => item[last])
+              : data[last];
+          } else return profileEntity.getValue(parsedVar);
+        } else {
+          return profileEntity.getValue(parsedVar);
+        }
+      }
+    } else {
+      // If not given, determine the profile based on the "root" type
+      if (!profile) {
+        profile = profileEntity;
+      }
+
+      let parsedVar = varName.replace(/\./g, "/");
+
+      // Build the pending variable using the variable name and type
+      const pendingVar = this.buildPendingVariable(parsedVar, isRoot);
+
+      // If the profile is an object or null, we can finish early
+      if (!(profile instanceof Profile)) {
+        if (isLabel) {
+          let tgtProfile = isRoot ? this.profile : this.secondaryProfile;
+
+          return tgtProfile?.getMetaInfo(pendingVar) || pendingVar;
+        } else {
+          if (parsedVar.includes("/")) {
+            let data = profile;
+            let path = parsedVar.split("/");
+
+            for (let name of path) {
+              if (!Profile.isPlainObject(data) && !Array.isArray(data))
+                return null;
+
+              data = Array.isArray(data)
+                ? data.map((item) => item[name])
+                : data[name];
             }
-        };
 
-        return this.processor.evaluateText(text, vars);
+            return data;
+          } else {
+            return profile[varName];
+          }
+        }
+      }
+
+      // Return the label if '@' modifier is present, otherwise return the value
+      return isLabel
+        ? profile.getMetaInfo(pendingVar) || pendingVar
+        : profile.getValue(pendingVar);
     }
+  }
 
-    buildPendingVariable(pending, isRoot) {
-        if (isRoot) return pending.slice(1) || '';
+  getSectionItems(text) {
+    const isMultipleProfiles = text.startsWith("*");
 
-        if (pending.includes('/') || !this.section) return pending;
+    text = isMultipleProfiles ? text.slice(1) : text;
 
-        if (pending === '?') pending = this.field || '';
+    const vars = (key) => {
+      if (isMultipleProfiles) {
+        return this.profiles
+          .map((profile) => {
+            return this.getVariable(key, profile);
+          })
+          .flat();
+      } else {
+        return this.getVariable(key);
+      }
+    };
 
-        return `${this.section}${pending ? `/${pending}` : ''}`;
-    }
+    return this.processor.evaluateText(text, vars);
+  }
+
+  buildPendingVariable(pending, isRoot) {
+    if (isRoot) return pending.slice(1) || "";
+
+    if (pending.includes("/") || !this.section) return pending;
+
+    if (pending === "?") pending = this.field || "";
+
+    return `${this.section}${pending ? `/${pending}` : ""}`;
+  }
 }

@@ -14,9 +14,9 @@ import { parseContent } from '@uniwebcms/semantic-parser';
 
 - `doc` (Object): A ProseMirror/TipTap document object with `type: "doc"` and `content` array
 - `options` (Object, optional): Parsing options
-  - `pretitleLevel` (number): Heading level for pretitle detection (2 or 3). Default: 3
   - `parseCodeAsJson` (boolean): Parse code blocks as JSON for properties. Default: false
-  - `extractBodyHeadings` (boolean): Extract headings from body content. Default: false
+
+**Note:** Body headings are always collected automatically - no configuration needed.
 
 ### Returns
 

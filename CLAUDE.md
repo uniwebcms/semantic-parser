@@ -110,11 +110,12 @@ Lists maintain hierarchy through nested structure. The `processListItems()` func
 
 The parser implements the semantic conventions documented in `docs/guide.md`. Key patterns:
 
-- **Pretitle Pattern**: H3 followed by higher-level heading (H1/H2)
+- **Pretitle Pattern**: Any heading followed by a more important heading (e.g., H3→H1, H2→H1, H6→H5, etc.)
 - **Banner Pattern**: Image (with banner role or followed by heading) at start of first group
 - **Divider Mode**: Presence of any `horizontalRule` switches entire document to divider-based grouping
 - **Heading Groups**: Consecutive headings with increasing levels are consumed together
 - **Main Content**: First group is main if it's the only group OR has lower heading level than second group
+- **Body Headings**: Headings that overflow the header slots (title, subtitle, subtitle2) are automatically collected in `body.headings`
 
 ## Testing Structure
 
