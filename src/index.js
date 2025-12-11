@@ -1,7 +1,7 @@
-import { processSequence } from './processors/sequence.js';
-import { processGroups } from './processors/groups.js';
-import { processByType } from './processors/byType.js';
-import * as mappers from './mappers/index.js';
+import { processSequence } from "./processors/sequence.js";
+import { processGroups } from "./processors/groups.js";
+import { processByType } from "./processors/byType.js";
+import * as mappers from "./mappers/index.js";
 
 /**
  * Parse ProseMirror/TipTap content into semantic structure
@@ -14,23 +14,23 @@ function parseContent(doc, options = {}) {
     // Default options
     const opts = {
         parseCodeAsJson: false,
-        ...options
+        ...options,
     };
 
     // Process content in different ways
     const sequence = processSequence(doc, opts);
+
+    console.log(sequence);
     const groups = processGroups(sequence, opts);
+    console.log(groups);
     const byType = processByType(sequence);
 
     return {
         raw: doc,
         sequence,
         groups,
-        byType
+        byType,
     };
 }
 
-export {
-    parseContent,
-    mappers
-};
+export { parseContent, mappers };

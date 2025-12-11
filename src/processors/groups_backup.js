@@ -10,22 +10,20 @@ function processGroups(sequence, options = {}) {
         items: [],
         metadata: {
             dividerMode: false,
-            groups: 0,
-        },
+            groups: 0
+        }
     };
 
     if (!sequence.length) return result;
 
     // Check if using divider mode
-    result.metadata.dividerMode = sequence.some((el) => el.type === "divider");
+    result.metadata.dividerMode = sequence.some((el) => el.type === 'divider');
 
     // Split sequence into raw groups
-    const groups = result.metadata.dividerMode
-        ? splitByDividers(sequence)
-        : splitByHeadings(sequence, options);
+    const groups = result.metadata.dividerMode ? splitByDividers(sequence) : splitByHeadings(sequence, options);
 
     // Process each group's structure
-    const processedGroups = groups.map((group) => processGroupContent(group));
+    const processedGroups = groups.map(group => processGroupContent(group));
 
     // Special handling for first group in divider mode
     if (result.metadata.dividerMode && groups.startsWithDivider) {
@@ -57,7 +55,7 @@ function splitByDividers(sequence) {
     for (let i = 0; i < sequence.length; i++) {
         const element = sequence[i];
 
-        if (element.type === "divider") {
+        if (element.type === 'divider') {
             if (currentGroup.length === 0 && groups.length === 0) {
                 startsWithDivider = true;
             } else if (currentGroup.length > 0) {
@@ -113,7 +111,7 @@ function splitByHeadings(sequence, options = {}) {
 
         const element = sequence[i];
 
-        if (element.type === "heading") {
+        if (element.type === 'heading') {
             const headings = readHeadingGroup(sequence, i);
             startGroup(false);
 
@@ -139,18 +137,14 @@ function splitByHeadings(sequence, options = {}) {
 function isPreTitle(sequence, i) {
     return (
         i + 1 < sequence.length &&
-        sequence[i].type === "heading" &&
-        sequence[i + 1].type === "heading" &&
-        sequence[i].level > sequence[i + 1].level // Smaller heading before larger
+        sequence[i].type === 'heading' &&
+        sequence[i + 1].type === 'heading' &&
+        sequence[i].level > sequence[i + 1].level  // Smaller heading before larger
     );
 }
 
 function isBannerImage(sequence, i) {
-    return (
-        i + 1 < sequence.length &&
-        sequence[i].type === "image" &&
-        (sequence[i].role === "banner" || sequence[i + 1].type === "heading")
-    );
+    return i + 1 < sequence.length && sequence[i].type === 'image' && (sequence[i].role === 'banner' || sequence[i + 1].type === 'heading');
 }
 
 /**
@@ -162,10 +156,7 @@ function readHeadingGroup(sequence, i) {
     for (i++; i < sequence.length; i++) {
         const element = sequence[i];
 
-        if (
-            element.type === "heading" &&
-            element.level > sequence[i - 1].level
-        ) {
+        if (element.type === 'heading' && element.level > sequence[i - 1].level) {
             elements.push(element);
         }
     }
@@ -176,12 +167,13 @@ function readHeadingGroup(sequence, i) {
  * Process a group's content to identify its structure
  */
 function processGroupContent(elements) {
+
     const header = {
-        pretitle: "",
-        title: "",
-        subtitle: "",
-        subtitle2: "",
-        alignment: null,
+        pretitle: '',
+        title: '',
+        subtitle: '',
+        subtitle2: '',
+        alignment: null
     };
     let banner = null;
     const body = {
@@ -196,48 +188,36 @@ function processGroupContent(elements) {
         propertyBlocks: [],
         cards: [],
         documents: [],
-        form: [],
         forms: [],
         quotes: [],
-        headings: [],
+        headings: []
     };
 
     const metadata = {
         level: null,
-        contentTypes: new Set(),
+        contentTypes: new Set()
     };
 
-    if (!elements)
-        return {
-            header,
-            body,
-            banner,
-            metadata,
-        };
+    let inBody = false;  // Track when we've finished header section
 
     for (let i = 0; i < elements.length; i++) {
-        //We shuold only set pretitle and banner image once
-        if (isPreTitle(elements, i) && !header.pretitle) {
+        if (isPreTitle(elements, i)) {
             header.pretitle = elements[i].content;
             i++; // move to known next heading (H1 or h2)
         }
 
-        if (isBannerImage(elements, i) && !banner) {
+        if (isBannerImage(elements, i)) {
             banner = {
                 url: elements[i].src,
                 caption: elements[i].caption,
-                alt: elements[i].alt,
+                alt: elements[i].alt
             };
             i++;
         }
 
         const element = elements[i];
 
-        if (element.type === "heading") {
-            if (element.children && Array.isArray(element.children))
-                processInlineElements(element.children, body);
-
-            //We shuold set the group level to the highest one instead of the first one.
+        if (element.type === 'heading') {
             metadata.level ??= element.level;
 
             // Extract alignment from first heading
@@ -247,80 +227,90 @@ function processGroupContent(elements) {
 
             // Assign to header fields
             if (!header.title) {
-                header.title = element.text;
+                header.title = element.content;
             } else if (!header.subtitle) {
-                header.subtitle = element.text;
+                header.subtitle = element.content;
             } else if (!header.subtitle2) {
-                header.subtitle2 = element.text;
+                header.subtitle2 = element.content;
             } else {
                 // After subtitle2, we're in body - collect heading
-                body.headings.push(element.text);
+                inBody = true;
+                body.headings.push(element.content);
             }
-        } else if (element.type === "list") {
-            const listItems = element.children;
-
-            body.lists.push(
-                listItems.map((listItem) => processGroupContent(listItem).body)
-            );
+        } else if (element.type === 'list') {
+            inBody = true;
+            body.lists.push(processListContent(element));
         } else {
-            let preserveProps = {
-                ...element.attrs,
-            };
+            inBody = true;
 
             switch (element.type) {
-                case "paragraph":
-                    if (element.children && Array.isArray(element.children))
-                        processInlineElements(element.children, body);
-
-                    body.paragraphs.push(element.text);
+                case 'paragraph':
+                    body.paragraphs.push(element.content);
                     break;
 
-                case "image":
-                    body.imgs.push(preserveProps);
-                    break;
-
-                case "video":
-                    body.videos.push(preserveProps);
-                    break;
-
-                case "link":
-                    body.links.push(preserveProps);
-                    break;
-
-                case "icon":
-                    body.icons.push(preserveProps);
-                    break;
-
-                case "button":
-                    body.buttons.push({
-                        attrs: element.attrs,
-                        content: element.text,
+                case 'image':
+                    body.imgs.push({
+                        url: element.src,
+                        caption: element.caption,
+                        alt: element.alt
                     });
                     break;
 
-                case "blockquote":
+                case 'link':
+                    body.links.push({
+                        href: element.content.href,
+                        label: element.content.label
+                    });
+                    break;
+
+                case 'styledLink':
+                    // Styled link (multi-part with same href)
+                    body.links.push({
+                        href: element.href,
+                        label: element.content,
+                        target: element.target
+                    });
+                    break;
+
+                case 'icon':
+                    body.icons.push(element.svg);
+                    break;
+
+                case 'button':
+                    body.buttons.push(element);
+                    break;
+
+                case 'video':
+                    body.videos.push({
+                        src: element.src,
+                        caption: element.caption,
+                        alt: element.alt
+                    });
+                    break;
+
+                case 'blockquote':
                     // Process blockquote content recursively
-                    const quoteContent = processGroupContent(element.children);
+                    const quoteContent = processGroupContent(element.content, options);
                     body.quotes.push(quoteContent.body);
                     break;
 
-                case "codeBlock":
-                    const codeData = element.text;
-                    body.properties = codeData; // Last one
-                    body.propertyBlocks.push(codeData); // All of them
+                case 'codeBlock':
+                    // Use parsed JSON if available, otherwise use text content
+                    const codeData = element.parsed !== null ? element.parsed : element.content;
+                    body.properties = codeData;  // Last one
+                    body.propertyBlocks.push(codeData);  // All of them
                     break;
 
-                case "form":
-                    body.forms.push(element.data || element.attrs);
-                    body.form = form;
-                    break;
-
-                case "card-group":
+                case 'card-group':
                     body.cards.push(...element.cards);
                     break;
 
-                case "document-group":
+                case 'document-group':
                     body.documents.push(...element.documents);
+                    break;
+
+                case 'form':
+                    body.forms.push(element.data || element.attrs);
                     break;
             }
         }
@@ -330,8 +320,26 @@ function processGroupContent(elements) {
         header,
         body,
         banner,
-        metadata,
+        metadata
     };
+}
+
+function processListContent(list) {
+    const { items } = list;
+
+    return items.map((item) => {
+        const { items: nestedList, content: listContent } = item;
+
+        const parsedContent = processGroupContent(listContent).body;
+
+        if (nestedList.length) {
+            const parsedNestedList = nestedList.map((nestedItem) => processGroupContent(nestedItem.content).body);
+
+            parsedContent.lists = [parsedNestedList];
+        }
+
+        return parsedContent;
+    });
 }
 
 /**
@@ -350,13 +358,6 @@ function identifyMainContent(groups) {
     return first ? !second || first < second : false;
 }
 
-function processInlineElements(children, body) {
-    children.forEach((item) => {
-        //Handle icons only for now
-        if (item.type === "icon") {
-            body.icons.push(item);
-        }
-    });
-}
-
-export { processGroups };
+export {
+    processGroups
+};
