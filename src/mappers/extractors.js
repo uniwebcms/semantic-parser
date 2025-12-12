@@ -375,8 +375,6 @@ function legacy(parsed) {
         };
     };
 
-    console.log(groups);
-
     return {
         main: transformGroup(groups.main),
         items: (groups.items || []).map(transformGroup),

@@ -58,9 +58,14 @@ function splitBySlices(sequence) {
 
         // 2. Handle Headings (Semantic Split)
         if (element.type === "heading") {
+            // SPECIAL CASE: Banner Image for the whole content
+            // If we are at the second element (index 1), and the first element was a banner image,
+            // we do NOT close the group. We let the heading merge with the image.
+            const isBannerMerge = i === 1 && isBannerImage(sequence, 0);
+
             // A new Heading Group starts a new visual block.
             // If we have gathered content in the current group, close it now.
-            if (currentGroup.length > 0) {
+            if (currentGroup.length > 0 && !isBannerMerge) {
                 groups.push(currentGroup);
                 currentGroup = [];
             }
@@ -98,6 +103,15 @@ function isPreTitle(sequence, i) {
         sequence[i].type === "heading" &&
         sequence[i + 1].type === "heading" &&
         sequence[i].level > sequence[i + 1].level // Smaller heading before larger
+    );
+}
+
+function isBannerImage(sequence, i) {
+    return (
+        i === 0 &&
+        i + 1 < sequence.length &&
+        sequence[i].type === "image" &&
+        (sequence[i].role === "banner" || sequence[i + 1].type === "heading")
     );
 }
 

@@ -21,7 +21,7 @@ function parseContent(doc, options = {}) {
     const sequence = processSequence(doc, opts);
 
     const groups = processGroups(sequence, opts);
-    console.log(groups);
+
     const byType = processByType(sequence);
 
     return {
