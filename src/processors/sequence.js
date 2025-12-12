@@ -276,7 +276,7 @@ function getTextContent(content, options = {}) {
             } else if (type === "hardBreak") {
                 return prev + "<br>";
             } else {
-                console.warn(`unhandled text content type: ${type}`, curr);
+                // console.warn(`unhandled text content type: ${type}`, curr);
                 return prev;
             }
         }, "")
@@ -536,7 +536,7 @@ function isStyledLink(item) {
                 c?.marks?.some(
                     (mark) =>
                         mark.type === "link" &&
-                        isEqual(mark.attrs, firstLinkMark?.attrs)
+                        mark.attrs?.href === firstLinkMark.attrs?.href
                 ) || false
         )
     )

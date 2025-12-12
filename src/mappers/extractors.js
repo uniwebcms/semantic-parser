@@ -2,7 +2,7 @@
  * Pre-built extractors for common component patterns
  */
 
-import { first, joinParagraphs } from './helpers.js';
+import { first, joinParagraphs } from "./helpers.js";
 
 /**
  * Extract hero component data
@@ -23,7 +23,7 @@ function hero(parsed) {
         imageAlt: first(main?.body?.imgs)?.alt || null,
         banner: main?.banner?.url || null,
         cta: first(main?.body?.links) || null,
-        button: first(main?.body?.buttons) || null
+        button: first(main?.body?.buttons) || null,
     };
 }
 
@@ -51,7 +51,7 @@ function card(parsed, options = {}) {
             imageAlt: first(group.body?.imgs)?.alt || null,
             icon: first(group.body?.icons) || null,
             link: first(group.body?.links) || null,
-            button: first(group.body?.buttons) || null
+            button: first(group.body?.buttons) || null,
         };
     };
 
@@ -86,7 +86,7 @@ function article(parsed) {
         content: main?.body?.paragraphs || [],
         images: main?.body?.imgs || [],
         videos: main?.body?.videos || [],
-        links: main?.body?.links || []
+        links: main?.body?.links || [],
     };
 }
 
@@ -100,11 +100,14 @@ function article(parsed) {
 function stats(parsed) {
     const items = parsed.groups?.items || [];
 
-    return items.map(item => ({
-        value: item.header?.title || null,
-        label: item.header?.subtitle || first(item.body?.paragraphs) || null,
-        description: item.body?.paragraphs || []
-    })).filter(stat => stat.value);
+    return items
+        .map((item) => ({
+            value: item.header?.title || null,
+            label:
+                item.header?.subtitle || first(item.body?.paragraphs) || null,
+            description: item.body?.paragraphs || [],
+        }))
+        .filter((stat) => stat.value);
 }
 
 /**
@@ -117,24 +120,28 @@ function stats(parsed) {
 function navigation(parsed) {
     const items = parsed.groups?.items || [];
 
-    return items.map(item => {
-        const navItem = {
-            label: item.header?.title || null,
-            href: first(item.body?.links)?.href || null
-        };
+    return items
+        .map((item) => {
+            const navItem = {
+                label: item.header?.title || null,
+                href: first(item.body?.links)?.href || null,
+            };
 
-        // Extract children from nested lists
-        const firstList = first(item.body?.lists);
-        if (firstList && firstList.length > 0) {
-            navItem.children = firstList.map(listItem => ({
-                label: joinParagraphs(listItem.paragraphs) || null,
-                href: first(listItem.links)?.href || null,
-                icon: first(listItem.icons) || null
-            })).filter(child => child.label);
-        }
+            // Extract children from nested lists
+            const firstList = first(item.body?.lists);
+            if (firstList && firstList.length > 0) {
+                navItem.children = firstList
+                    .map((listItem) => ({
+                        label: joinParagraphs(listItem.paragraphs) || null,
+                        href: first(listItem.links)?.href || null,
+                        icon: first(listItem.icons) || null,
+                    }))
+                    .filter((child) => child.label);
+            }
 
-        return navItem;
-    }).filter(item => item.label);
+            return navItem;
+        })
+        .filter((item) => item.label);
 }
 
 /**
@@ -147,14 +154,16 @@ function navigation(parsed) {
 function features(parsed) {
     const items = parsed.groups?.items || [];
 
-    return items.map(item => ({
-        title: item.header?.title || null,
-        subtitle: item.header?.subtitle || null,
-        description: item.body?.paragraphs || [],
-        icon: first(item.body?.icons) || null,
-        image: first(item.body?.imgs)?.url || null,
-        link: first(item.body?.links) || null
-    })).filter(feature => feature.title);
+    return items
+        .map((item) => ({
+            title: item.header?.title || null,
+            subtitle: item.header?.subtitle || null,
+            description: item.body?.paragraphs || [],
+            icon: first(item.body?.icons) || null,
+            image: first(item.body?.imgs)?.url || null,
+            link: first(item.body?.links) || null,
+        }))
+        .filter((feature) => feature.title);
 }
 
 /**
@@ -178,7 +187,7 @@ function testimonial(parsed, options = {}) {
             role: group.header?.subtitle || null,
             company: group.header?.pretitle || null,
             image: first(group.body?.imgs)?.url || null,
-            imageAlt: first(group.body?.imgs)?.alt || null
+            imageAlt: first(group.body?.imgs)?.alt || null,
         };
     };
 
@@ -200,11 +209,13 @@ function testimonial(parsed, options = {}) {
 function faq(parsed) {
     const items = parsed.groups?.items || [];
 
-    return items.map(item => ({
-        question: item.header?.title || null,
-        answer: item.body?.paragraphs || [],
-        links: item.body?.links || []
-    })).filter(item => item.question);
+    return items
+        .map((item) => ({
+            question: item.header?.title || null,
+            answer: item.body?.paragraphs || [],
+            links: item.body?.links || [],
+        }))
+        .filter((item) => item.question);
 }
 
 /**
@@ -217,20 +228,31 @@ function faq(parsed) {
 function pricing(parsed) {
     const items = parsed.groups?.items || [];
 
-    return items.map(item => {
-        const firstList = first(item.body?.lists);
+    return items
+        .map((item) => {
+            const firstList = first(item.body?.lists);
 
-        return {
-            name: item.header?.title || null,
-            price: item.header?.subtitle || null,
-            description: first(item.body?.paragraphs) || null,
-            features: firstList ? firstList.map(listItem =>
-                joinParagraphs(listItem.paragraphs)
-            ).filter(Boolean) : [],
-            cta: first(item.body?.links) || first(item.body?.buttons) || null,
-            highlighted: item.header?.pretitle?.toLowerCase().includes('popular') || false
-        };
-    }).filter(tier => tier.name);
+            return {
+                name: item.header?.title || null,
+                price: item.header?.subtitle || null,
+                description: first(item.body?.paragraphs) || null,
+                features: firstList
+                    ? firstList
+                          .map((listItem) =>
+                              joinParagraphs(listItem.paragraphs)
+                          )
+                          .filter(Boolean)
+                    : [],
+                cta:
+                    first(item.body?.links) ||
+                    first(item.body?.buttons) ||
+                    null,
+                highlighted:
+                    item.header?.pretitle?.toLowerCase().includes("popular") ||
+                    false,
+            };
+        })
+        .filter((tier) => tier.name);
 }
 
 /**
@@ -243,15 +265,17 @@ function pricing(parsed) {
 function team(parsed) {
     const items = parsed.groups?.items || [];
 
-    return items.map(item => ({
-        name: item.header?.title || null,
-        role: item.header?.subtitle || null,
-        department: item.header?.pretitle || null,
-        bio: item.body?.paragraphs || [],
-        image: first(item.body?.imgs)?.url || null,
-        imageAlt: first(item.body?.imgs)?.alt || null,
-        links: item.body?.links || []
-    })).filter(member => member.name);
+    return items
+        .map((item) => ({
+            name: item.header?.title || null,
+            role: item.header?.subtitle || null,
+            department: item.header?.pretitle || null,
+            bio: item.body?.paragraphs || [],
+            image: first(item.body?.imgs)?.url || null,
+            imageAlt: first(item.body?.imgs)?.alt || null,
+            links: item.body?.links || [],
+        }))
+        .filter((member) => member.name);
 }
 
 /**
@@ -264,26 +288,26 @@ function team(parsed) {
  * @returns {Array} Gallery images
  */
 function gallery(parsed, options = {}) {
-    const { source = 'all' } = options;
+    const { source = "all" } = options;
     const images = [];
 
-    if (source === 'main' || source === 'all') {
+    if (source === "main" || source === "all") {
         const mainImages = parsed.groups?.main?.body?.imgs || [];
         images.push(...mainImages);
     }
 
-    if (source === 'items' || source === 'all') {
+    if (source === "items" || source === "all") {
         const items = parsed.groups?.items || [];
-        items.forEach(item => {
+        items.forEach((item) => {
             const itemImages = item.body?.imgs || [];
             images.push(...itemImages);
         });
     }
 
-    return images.map(img => ({
+    return images.map((img) => ({
         url: img.url,
         alt: img.alt || null,
-        caption: img.caption || null
+        caption: img.caption || null,
     }));
 }
 
@@ -312,19 +336,18 @@ function legacy(parsed) {
 
         return {
             header: {
-                title: group.header?.title || '',
-                subtitle: group.header?.subtitle || '',
-                subtitle2: group.header?.subtitle2 || '',
-                pretitle: group.header?.pretitle || '',
+                title: group.header?.title || "",
+                subtitle: group.header?.subtitle || "",
+                subtitle2: group.header?.subtitle2 || "",
+                pretitle: group.header?.pretitle || "",
                 // Auto-fill description (legacy behavior)
-                description: group.header?.subtitle2 || first(group.body?.paragraphs) || '',
-                alignment: group.header?.alignment || ''
+                description:
+                    group.header?.subtitle2 ||
+                    first(group.body?.paragraphs) ||
+                    "",
+                alignment: group.header?.alignment || "",
             },
-            banner: group.banner ? {
-                url: group.banner.url,
-                alt: group.banner.alt,
-                caption: group.banner.caption
-            } : null,
+            banner: group.banner || null,
             body: {
                 paragraphs: group.body?.paragraphs || [],
                 headings: group.body?.headings || [],
@@ -340,14 +363,16 @@ function legacy(parsed) {
                 form: first(group.body?.forms) || null,
                 quotes: group.body?.quotes || [],
                 properties: group.body?.properties || {},
-                propertyBlocks: group.body?.propertyBlocks || []
-            }
+                propertyBlocks: group.body?.propertyBlocks || [],
+            },
         };
     };
 
+    console.log(groups);
+
     return {
         main: transformGroup(groups.main),
-        items: (groups.items || []).map(transformGroup)
+        items: (groups.items || []).map(transformGroup),
     };
 }
 
@@ -363,5 +388,5 @@ export {
     pricing,
     team,
     gallery,
-    legacy
+    legacy,
 };

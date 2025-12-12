@@ -11,7 +11,8 @@
     },
     "scripts": {
         "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-        "test-report": "NODE_OPTIONS=--experimental-vm-modules jest --json > test-results.json 2>&1"
+        "test-report": "NODE_OPTIONS=--experimental-vm-modules jest --json > test-results.json 2>&1",
+        "test:groups": "NODE_OPTIONS=--experimental-vm-modules jest tests/processors/groups.test.js"
     },
     "keywords": [
         "prosemirror",

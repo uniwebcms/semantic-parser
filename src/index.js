@@ -20,7 +20,6 @@ function parseContent(doc, options = {}) {
     // Process content in different ways
     const sequence = processSequence(doc, opts);
 
-    console.log(sequence);
     const groups = processGroups(sequence, opts);
     console.log(groups);
     const byType = processByType(sequence);

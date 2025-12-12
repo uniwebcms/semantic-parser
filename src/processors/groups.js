@@ -22,7 +22,7 @@ function processGroups(sequence, options = {}) {
     // Split sequence into raw groups
     const groups = result.metadata.dividerMode
         ? splitByDividers(sequence)
-        : splitByHeadings(sequence, options);
+        : splitByHeadings(sequence);
 
     // Process each group's structure
     const processedGroups = groups.map((group) => processGroupContent(group));
@@ -80,7 +80,7 @@ function splitByDividers(sequence) {
 /**
  * Split sequence into groups using heading patterns
  */
-function splitByHeadings(sequence, options = {}) {
+function splitByHeadings(sequence) {
     const groups = [];
     let currentGroup = [];
     let isPreOpened = false;
@@ -115,6 +115,7 @@ function splitByHeadings(sequence, options = {}) {
 
         if (element.type === "heading") {
             const headings = readHeadingGroup(sequence, i);
+
             startGroup(false);
 
             // Add headings to the current group
@@ -154,22 +155,119 @@ function isBannerImage(sequence, i) {
 }
 
 /**
- * Eagerly consume all consecutive headings with increasing levels
- * and return them as an array.
+ * Eagerly consume consecutive headings.
+ * It intelligently decides if a heading is a Subtitle (Merge) or a List Item (Split)
+ * based on whether it has children compared to its peers.
  */
-function readHeadingGroup(sequence, i) {
-    const elements = [sequence[i]];
-    for (i++; i < sequence.length; i++) {
+function readHeadingGroup(sequence, startIndex) {
+    const elements = [sequence[startIndex]];
+    let currentLevel = sequence[startIndex].level;
+
+    for (let i = startIndex + 1; i < sequence.length; i++) {
         const element = sequence[i];
 
+        // 1. Basic Structure Check: Must be a heading of a deeper (or same) level
+        // We stop immediately if we hit a higher heading (e.g. H2 -> H1)
         if (
-            element.type === "heading" &&
-            element.level > sequence[i - 1].level
+            element.type !== "heading" ||
+            element.level <= sequence[startIndex].level
         ) {
-            elements.push(element);
+            break;
+        }
+
+        // 2. Sibling Boundary (The Fix):
+        // If we are already at Level X (e.g., consumed a Subtitle), and we see another Level X,
+        // it is a sibling. We must break to let it start its own group.
+        if (element.level === currentLevel) {
+            break;
+        }
+
+        // 3. Ambiguous First-Child Strategy
+        // If we are stepping DOWN (H1 -> H2), check if this H2 is actually an Item (Resume pattern).
+        if (hasPeerInScope(sequence, i)) {
+            // "Leaf vs Branch" Heuristic:
+            // If the current heading is a Leaf (no children) AND its peer is a Branch (has children),
+            // we treat this as a Subtitle (Merge). Otherwise, it's an Item (Split).
+            const isLeaf = !hasChildInScope(sequence, i);
+            const peerIsBranch = peerHasChildInScope(sequence, i);
+
+            // !(isLeaf && peerIsBranch)
+            if (!isLeaf || !peerIsBranch) {
+                // It fails the subtitle check. It is an Item. Split here.
+                break;
+            }
+
+            // If we are here, it's a Subtitle (Leaf). Merge it.
+        }
+
+        // 3. Consume
+        elements.push(element);
+        currentLevel = element.level;
+    }
+
+    return elements;
+}
+
+/**
+ * Check if there is another heading of the same level later in this section
+ */
+function hasPeerInScope(sequence, currentIndex) {
+    const targetLevel = sequence[currentIndex].level;
+
+    // Scan ahead until we hit a boundary (heading of higher or equal importance)
+    for (let k = currentIndex + 1; k < sequence.length; k++) {
+        const el = sequence[k];
+        if (el.type === "heading") {
+            if (el.level < targetLevel) return false; // Left the scope (e.g. hit H1)
+            if (el.level === targetLevel) return true; // Found a peer!
         }
     }
-    return elements;
+    return false;
+}
+
+/**
+ * Check if the current heading has any sub-headings (children) underneath it
+ */
+function hasChildInScope(sequence, currentIndex) {
+    const parentLevel = sequence[currentIndex].level;
+
+    for (let k = currentIndex + 1; k < sequence.length; k++) {
+        const el = sequence[k];
+        if (el.type === "heading") {
+            // If we hit a sibling or parent, we stopped looking without finding a child
+            if (el.level <= parentLevel) return false;
+            // If we find a deeper level, it IS a child
+            if (el.level > parentLevel) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Look ahead to the *next* peer and see if THAT peer has children.
+ */
+function peerHasChildInScope(sequence, currentIndex) {
+    const targetLevel = sequence[currentIndex].level;
+    let peerIndex = -1;
+
+    // 1. Find the index of the next peer
+    for (let k = currentIndex + 1; k < sequence.length; k++) {
+        const el = sequence[k];
+        if (el.type === "heading") {
+            if (el.level < targetLevel) return false; // Scope ended
+            if (el.level === targetLevel) {
+                peerIndex = k;
+                break;
+            }
+        }
+    }
+
+    // 2. If found, check if that peer has children
+    if (peerIndex !== -1) {
+        return hasChildInScope(sequence, peerIndex);
+    }
+
+    return false;
 }
 
 /**
@@ -196,7 +294,6 @@ function processGroupContent(elements) {
         propertyBlocks: [],
         cards: [],
         documents: [],
-        form: [],
         forms: [],
         quotes: [],
         headings: [],
@@ -218,7 +315,7 @@ function processGroupContent(elements) {
     for (let i = 0; i < elements.length; i++) {
         //We shuold only set pretitle and banner image once
         if (isPreTitle(elements, i) && !header.pretitle) {
-            header.pretitle = elements[i].content;
+            header.pretitle = elements[i].text;
             i++; // move to known next heading (H1 or h2)
         }
 
@@ -244,8 +341,9 @@ function processGroupContent(elements) {
             if (!header.alignment && element.attrs?.textAlign) {
                 header.alignment = element.attrs.textAlign;
             }
-
+            // h3 h2 h1 h1
             // Assign to header fields
+            // h3 h2 h3 h4
             if (!header.title) {
                 header.title = element.text;
             } else if (!header.subtitle) {
@@ -312,7 +410,6 @@ function processGroupContent(elements) {
 
                 case "form":
                     body.forms.push(element.data || element.attrs);
-                    body.form = form;
                     break;
 
                 case "card-group":
