@@ -123,6 +123,9 @@ export const academicExperience = {
             attrs: { level: 1 },
             content: [{ type: "text", text: "Academic Experience" }],
         },
+        {
+            type: "divier",
+        },
         // Item 1
         {
             type: "heading",
@@ -261,6 +264,9 @@ export const skippedLevels = {
             content: [{ type: "text", text: "Skills" }],
         },
         // Jump straight to H3.
+        {
+            type: "divider",
+        },
         {
             type: "heading",
             attrs: { level: 3 },

@@ -334,6 +334,13 @@ function legacy(parsed) {
     const transformGroup = (group) => {
         if (!group) return null;
 
+        let imgs = group.body?.imgs || [];
+        let banner = imgs.filter((item) => {
+            return (item.role = "banner");
+        })?.[0];
+
+        if (!banner) banner = imgs[0];
+
         return {
             header: {
                 title: group.header?.title || "",
@@ -347,11 +354,11 @@ function legacy(parsed) {
                     "",
                 alignment: group.header?.alignment || "",
             },
-            banner: group.banner || null,
+            banner,
             body: {
                 paragraphs: group.body?.paragraphs || [],
                 headings: group.body?.headings || [],
-                imgs: group.body?.imgs || [],
+                imgs,
                 videos: group.body?.videos || [],
                 lists: group.body?.lists || [],
                 links: group.body?.links || [],

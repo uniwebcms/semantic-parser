@@ -16,13 +16,7 @@ function processGroups(sequence, options = {}) {
 
     if (!sequence.length) return result;
 
-    // Check if using divider mode
-    result.metadata.dividerMode = sequence.some((el) => el.type === "divider");
-
-    // Split sequence into raw groups
-    const groups = result.metadata.dividerMode
-        ? splitByDividers(sequence)
-        : splitByHeadings(sequence);
+    const groups = splitBySlices(sequence);
 
     // Process each group's structure
     const processedGroups = groups.map((group) => processGroupContent(group));
@@ -45,87 +39,48 @@ function processGroups(sequence, options = {}) {
     return result;
 }
 
-/**
- * Split sequence into groups using dividers
- */
-function splitByDividers(sequence) {
+function splitBySlices(sequence) {
     const groups = [];
     let currentGroup = [];
-    let startsWithDivider = false;
 
-    // Check if content effectively starts with divider (ignoring whitespace etc)
     for (let i = 0; i < sequence.length; i++) {
         const element = sequence[i];
 
+        // 1. Handle Dividers (Explicit Split)
         if (element.type === "divider") {
-            if (currentGroup.length === 0 && groups.length === 0) {
-                startsWithDivider = true;
-            } else if (currentGroup.length > 0) {
+            // Close current group if it has content
+            if (currentGroup.length > 0) {
                 groups.push(currentGroup);
                 currentGroup = [];
             }
-        } else {
-            currentGroup.push(element);
-        }
-    }
-
-    if (currentGroup.length > 0) {
-        groups.push(currentGroup);
-    }
-
-    groups.startsWithDivider = startsWithDivider;
-    return groups;
-}
-
-/**
- * Split sequence into groups using heading patterns
- */
-function splitByHeadings(sequence) {
-    const groups = [];
-    let currentGroup = [];
-    let isPreOpened = false;
-
-    // Consider if current group is pre opened (only has banner or pretitle)
-    // before starting a new group.
-    const startGroup = (preOpen) => {
-        if (currentGroup.length && !isPreOpened) {
-            groups.push(currentGroup);
-            currentGroup = [];
-        }
-        isPreOpened = preOpen;
-    };
-
-    for (let i = 0; i < sequence.length; i++) {
-        // Only allow a banner for the first group
-        if (!groups.length && isBannerImage(sequence, i)) {
-            startGroup(true); // pre open a new group
-            currentGroup.push(sequence[i]);
-            i++; // move to known next element (it will be a heading)
+            continue; // Consume the divider (don't add to group)
         }
 
-        // Handle special pretitle case before consuming all consecutive
-        // headings with increasing levels
-        if (isPreTitle(sequence, i)) {
-            startGroup(true); // pre open a new group
-            currentGroup.push(sequence[i]);
-            i++; // move to known next element (it will be a heading)
-        }
-
-        const element = sequence[i];
-
+        // 2. Handle Headings (Semantic Split)
         if (element.type === "heading") {
-            const headings = readHeadingGroup(sequence, i);
+            // A new Heading Group starts a new visual block.
+            // If we have gathered content in the current group, close it now.
+            if (currentGroup.length > 0) {
+                groups.push(currentGroup);
+                currentGroup = [];
+            }
 
-            startGroup(false);
+            // Consume the entire semantic heading block (Title + Subtitles)
+            // We reuse your smart readHeadingGroup logic here!
+            const headingBlock = readHeadingGroup(sequence, i);
+            currentGroup.push(...headingBlock);
 
-            // Add headings to the current group
-            currentGroup.push(...headings);
-            i += headings.length - 1; // skip all the added headings
+            // Advance the index by the number of headings consumed
+            // (Loop increments i by 1, so we add length - 1)
+            i += headingBlock.length - 1;
         } else {
+            // 3. Handle Content (Body)
+            // Paragraphs, images, lists, etc. just append to the current slice.
             currentGroup.push(element);
         }
     }
 
+    // Push the final group if not empty
     if (currentGroup.length > 0) {
         groups.push(currentGroup);
     }
@@ -146,128 +101,37 @@ function isPreTitle(sequence, i) {
     );
 }
 
-function isBannerImage(sequence, i) {
-    return (
-        i + 1 < sequence.length &&
-        sequence[i].type === "image" &&
-        (sequence[i].role === "banner" || sequence[i + 1].type === "heading")
-    );
-}
+function readHeadingGroup(sequence, startIdx) {
+    const elements = [sequence[startIdx]];
 
-/**
- * Eagerly consume consecutive headings.
- * It intelligently decides if a heading is a Subtitle (Merge) or a List Item (Split)
- * based on whether it has children compared to its peers.
- */
-function readHeadingGroup(sequence, startIndex) {
-    const elements = [sequence[startIndex]];
-    let currentLevel = sequence[startIndex].level;
-
-    for (let i = startIndex + 1; i < sequence.length; i++) {
+    // Iterate starting from the next element
+    for (let i = startIdx + 1; i < sequence.length; i++) {
         const element = sequence[i];
+        const previousElement = elements[elements.length - 1];
 
-        // 1. Basic Structure Check: Must be a heading of a deeper (or same) level
-        // We stop immediately if we hit a higher heading (e.g. H2 -> H1)
-        if (
-            element.type !== "heading" ||
-            element.level <= sequence[startIndex].level
-        ) {
+        if (element.type !== "heading") {
             break;
         }
 
-        // 2. Sibling Boundary (The Fix):
-        // If we are already at Level X (e.g., consumed a Subtitle), and we see another Level X,
-        // it is a sibling. We must break to let it start its own group.
-        if (element.level === currentLevel) {
-            break;
+        // Case 1: Strictly Deeper (Standard Subtitle/Deep Header)
+        // e.g. H1 -> H2
+        if (element.level > previousElement.level) {
+            elements.push(element);
+            continue;
         }
 
-        // 3. Ambiguous First-Child Strategy
-        // If we are stepping DOWN (H1 -> H2), check if this H2 is actually an Item (Resume pattern).
-        if (hasPeerInScope(sequence, i)) {
-            // "Leaf vs Branch" Heuristic:
-            // If the current heading is a Leaf (no children) AND its peer is a Branch (has children),
-            // we treat this as a Subtitle (Merge). Otherwise, it's an Item (Split).
-            const isLeaf = !hasChildInScope(sequence, i);
-            const peerIsBranch = peerHasChildInScope(sequence, i);
-
-            // !(isLeaf && peerIsBranch)
-            if (!isLeaf || !peerIsBranch) {
-                // It fails the subtitle check. It is an Item. Split here.
-                break;
-            }
-
-            // If we are here, it's a Subtitle (Leaf). Merge it.
+        // Case 2: Pretitle Promotion (Small -> Big)
+        // Only allowed if we haven't gone deep yet (length is 1)
+        // e.g. H2 -> H1
+        if (elements.length === 1 && element.level < previousElement.level) {
+            elements.push(element);
+            continue;
         }
 
-        // 3. Consume
-        elements.push(element);
-        currentLevel = element.level;
+        // Otherwise (Sibling or New Section), stop.
+        break;
     }
-
     return elements;
-}
-
-/**
- * Check if there is another heading of the same level later in this section
- */
-function hasPeerInScope(sequence, currentIndex) {
-    const targetLevel = sequence[currentIndex].level;
-
-    // Scan ahead until we hit a boundary (heading of higher or equal importance)
-    for (let k = currentIndex + 1; k < sequence.length; k++) {
-        const el = sequence[k];
-        if (el.type === "heading") {
-            if (el.level < targetLevel) return false; // Left the scope (e.g. hit H1)
-            if (el.level === targetLevel) return true; // Found a peer!
-        }
-    }
-    return false;
-}
-
-/**
- * Check if the current heading has any sub-headings (children) underneath it
- */
-function hasChildInScope(sequence, currentIndex) {
-    const parentLevel = sequence[currentIndex].level;
-
-    for (let k = currentIndex + 1; k < sequence.length; k++) {
-        const el = sequence[k];
-        if (el.type === "heading") {
-            // If we hit a sibling or parent, we stopped looking without finding a child
-            if (el.level <= parentLevel) return false;
-            // If we find a deeper level, it IS a child
-            if (el.level > parentLevel) return true;
-        }
-    }
-    return false;
-}
-
-/**
- * Look ahead to the *next* peer and see if THAT peer has children.
- */
-function peerHasChildInScope(sequence, currentIndex) {
-    const targetLevel = sequence[currentIndex].level;
-    let peerIndex = -1;
-
-    // 1. Find the index of the next peer
-    for (let k = currentIndex + 1; k < sequence.length; k++) {
-        const el = sequence[k];
-        if (el.type === "heading") {
-            if (el.level < targetLevel) return false; // Scope ended
-            if (el.level === targetLevel) {
-                peerIndex = k;
-                break;
-            }
-        }
-    }
-
-    // 2. If found, check if that peer has children
-    if (peerIndex !== -1) {
-        return hasChildInScope(sequence, peerIndex);
-    }
-
-    return false;
 }
 
 /**
@@ -281,7 +145,7 @@ function processGroupContent(elements) {
         subtitle2: "",
         alignment: null,
     };
-    let banner = null;
+
     const body = {
         imgs: [],
         icons: [],
@@ -308,24 +172,14 @@ function processGroupContent(elements) {
         return {
             header,
             body,
-            banner,
             metadata,
         };
 
     for (let i = 0; i < elements.length; i++) {
-        //We shuold only set pretitle and banner image once
+        //We shuold only set pretitle once
         if (isPreTitle(elements, i) && !header.pretitle) {
             header.pretitle = elements[i].text;
             i++; // move to known next heading (H1 or h2)
-        }
-
-        if (isBannerImage(elements, i) && !banner) {
-            banner = {
-                url: elements[i].src,
-                caption: elements[i].caption,
-                alt: elements[i].alt,
-            };
-            i++;
         }
 
         const element = elements[i];
@@ -426,7 +280,6 @@ function processGroupContent(elements) {
     return {
         header,
         body,
-        banner,
         metadata,
     };
 }
