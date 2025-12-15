@@ -254,7 +254,8 @@ function processGroupContent(elements) {
                     break;
 
                 case "icon":
-                    body.icons.push(preserveProps);
+                    //Might be string
+                    body.icons.push(element.attrs);
                     break;
 
                 case "button":
