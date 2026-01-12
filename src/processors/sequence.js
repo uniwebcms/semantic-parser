@@ -38,6 +38,7 @@ function createSequenceElement(node, options = {}) {
     const content = node.content;
 
     const linkVal = isLink(node);
+
     if (linkVal) {
         return {
             type: "link",
@@ -46,6 +47,7 @@ function createSequenceElement(node, options = {}) {
     }
 
     const styledLink = isStyledLink(node);
+
     if (styledLink) return styledLink;
 
     switch (node.type) {
@@ -60,8 +62,6 @@ function createSequenceElement(node, options = {}) {
 
         case "paragraph": {
             let textContent = getTextContent(content, options);
-
-            if (!textContent) return null;
 
             return {
                 type: "paragraph",
@@ -290,7 +290,10 @@ function processInlineElements(content) {
 
     for (const item of content) {
         if (item.type === "UniwebIcon") {
-            items.push(parseUniwebIcon(item.attrs));
+            items.push({
+                type: "icon",
+                attrs: parseUniwebIcon(item.attrs),
+            });
         } else if (item.type === "math-inline") {
             items.push(item);
         }
@@ -498,6 +501,7 @@ function isLink(item) {
                     return {
                         href: mark?.attrs?.href,
                         label: contentItem?.text || "",
+                        children: processInlineElements(content),
                     };
                 }
             }

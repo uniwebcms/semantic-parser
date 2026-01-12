@@ -238,7 +238,7 @@ function processGroupContent(elements) {
                     if (element.children && Array.isArray(element.children))
                         processInlineElements(element.children, body);
 
-                    body.paragraphs.push(element.text);
+                    if (element.text) body.paragraphs.push(element.text);
                     break;
 
                 case "image":
@@ -250,6 +250,9 @@ function processGroupContent(elements) {
                     break;
 
                 case "link":
+                    if (element.children && Array.isArray(element.children))
+                        processInlineElements(element.children, body);
+
                     body.links.push(preserveProps);
                     break;
 
@@ -319,7 +322,7 @@ function processInlineElements(children, body) {
     children.forEach((item) => {
         //Handle icons only for now
         if (item.type === "icon") {
-            body.icons.push(item);
+            body.icons.push(item.attrs);
         }
     });
 }
