@@ -1,3 +1,20 @@
+## ⚠️ Deprecated
+
+This repository is part of an earlier iteration of the Uniweb framework and is no longer maintained.
+
+**The current version is at [github.com/uniweb](https://github.com/uniweb):**
+- CLI & quickstart: [github.com/uniweb/cli](https://github.com/uniweb/cli)
+- Documentation: [github.com/uniweb/docs](https://github.com/uniweb/docs)
+- npm packages: `uniweb`, `@uniweb/*`
+
+```bash
+  pnpm create uniweb my-site
+```
+
+---
+
+The original README follows for historical reference.
+
 # @uniwebcms/semantic-parser
 
 A semantic parser for ProseMirror/TipTap content structures that helps bridge the gap between natural content writing and component-based web development.
